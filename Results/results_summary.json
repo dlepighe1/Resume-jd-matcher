@@ -1,0 +1,50 @@
+{
+  "project": "ResumeAI — Resume / Job-Description Matching",
+  "timeline": "2026-04-28 to 2026-05-05",
+  "source_of_truth": "Executed notebook outputs (Notebooks/03, 04, 05)",
+  "data": {
+    "training_v1": {"pairs": 500, "unique_jds": 200, "source": "curated from 1,148 scraped LinkedIn postings"},
+    "training_v2": {"pairs": 815, "unique_jds": 305},
+    "external_test": {"pairs": 212, "unique_jds": 53, "split": "106 calibration / 106 final test (stratified, seed 42)"},
+    "match_types": ["strong", "good", "partial", "hard_negative", "weak"],
+    "industries": 14
+  },
+  "final_study_internal_test_50_pairs": {
+    "MPNet (fine-tuned)": {"spearman": 0.8516, "mae": 0.2304},
+    "MPNet + isotonic calibration": {"spearman": 0.8372, "mae": 0.1199},
+    "RoBERTa cross-encoder (fine-tuned)": {"spearman": 0.8917, "mae": 0.0890},
+    "MiniLM-L12 cross-encoder (fine-tuned)": {"spearman": 0.2421, "mae": 0.3053},
+    "DeBERTa-v3 cross-encoder (fine-tuned)": {"spearman": null, "mae": 0.4677, "note": "Spearman NaN — near-constant predictions"}
+  },
+  "final_study_external_test_212_pairs": {
+    "MPNet + isotonic calibration": {"spearman": 0.7614, "mae": 0.1446},
+    "RoBERTa cross-encoder / hybrid": {"spearman": -0.6122, "mae": 0.3988, "note": "catastrophic overfitting: 0.89 internal -> -0.61 external"}
+  },
+  "overfitting_fixes_external_test_212_pairs": {
+    "MPNet + calibration (baseline)": {"spearman": 0.7693, "mae": 0.1657},
+    "RoBERTa CE (no fixes)": {"spearman": -0.3469, "mae": 0.3646},
+    "RoBERTa CE + 3x augmentation": {"spearman": 0.4483, "mae": 0.3581},
+    "DistilRoBERTa CE + augmentation + weight decay": {"spearman": 0.5103, "mae": 0.2742},
+    "K-fold ensemble (5x DistilRoBERTa)": {"spearman": 0.4113, "mae": 0.3037},
+    "conclusion": "No cross-encoder fix beat the calibrated bi-encoder at this data scale"
+  },
+  "production_v2_external_final_test_106_pairs": {
+    "MPNet raw (combined CoSENT+Cosine loss)": {"spearman": 0.8645, "mae": 0.1325},
+    "MPNet + Platt calibration": {"spearman": 0.8645, "mae": 0.1021},
+    "MPNet + isotonic calibration": {"spearman": 0.8667, "mae": 0.1005},
+    "RoBERTa CE (aug + reg)": {"spearman": 0.6514, "mae": 0.2209},
+    "DistilRoBERTa CE (aug + reg)": {"spearman": 0.8379, "mae": 0.1816},
+    "industries_below_0.15_mae": "13 of 14 (Marketing/Growth at 0.158)"
+  },
+  "production_model": {
+    "name": "all-mpnet-base-v2 fine-tuned with combined CoSENT + CosineSimilarity loss, + isotonic calibration fitted on external calibration split",
+    "spearman": 0.8667,
+    "mae": 0.1005,
+    "batch_ranking_speed": "106 resumes ranked in ~1.1 s (T4 GPU)"
+  },
+  "charts": {
+    "Results/03_final_study_external_eval_fig1.png": "Architecture comparison — internal test (Spearman / MAE / speed + scatter plots)",
+    "Results/04_overfitting_fixes_fig1.png": "Overfitting fixes compared on the 212-pair external test",
+    "Results/05_production_v2_fig1.png": "Production v2 models on the 106-pair external final test"
+  }
+}

@@ -1,0 +1,23 @@
+# Model weights (regenerate with src/train.py; ~420 MB)
+models/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+
+# graphify artifacts
+graphify-out/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Secrets
+.env
+.streamlit/secrets.toml
+.claude/
