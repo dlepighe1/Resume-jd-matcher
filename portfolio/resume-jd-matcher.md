@@ -39,7 +39,7 @@ goal: >-
   has never seen, (2) produces calibrated absolute scores (MAE ≤ 0.12) rather than
   compressed cosine similarities, and (3) explains every verdict.
 outcome: >-
-  Final model reaches 0.867 Spearman and 0.100 MAE on a 106-pair external test drawn from
+  Final model reaches 0.86 Spearman and 0.10 MAE on a 106-pair external test drawn from
   53 completely unseen job postings, with 13 of 14 industries under 0.15 MAE — and the
   study documents why the "stronger" cross-encoder architecture had to be rejected.
 
@@ -53,11 +53,13 @@ datasetPreprocessing: >-
   sections), 3× data augmentation (resume section shuffling, sentence dropping, keyword
   noise, ±0.02 score jitter), stratified splits by match type (seed 42).
 
-modelUsed: "Fine-tuned all-mpnet-base-v2 (109M params) + isotonic calibration"
+modelUsed: "Fine-tuned all-mpnet-base-v2 (109M params) + Platt calibration"
 modelApproach: >-
   Bi-encoder trained with a combined objective — CoSENTLoss for ranking plus
-  CosineSimilarityLoss for absolute-score signal — then post-hoc isotonic calibration
-  fitted on a 106-pair external calibration split so score mapping generalizes to unseen JDs.
+  CosineSimilarityLoss for absolute-score signal — then post-hoc Platt calibration
+  fitted on a 106-pair external calibration split so score mapping generalizes to
+  unseen JDs (Platt chosen over isotonic: statistically tied performance, but a
+  2-parameter sigmoid can't overfit a small calibration set).
 modelTraining: "4 epochs, batch 16, 10% warmup, AMP mixed precision on a Colab T4 (~1 h)"
 modelEvaluation: >-
   Spearman (ranking) + MAE (calibration) on a stratified 106-pair external final test with
@@ -74,7 +76,7 @@ pipelineSteps:
   - "Score & explain fit"
 
 resultsMetrics:
-  - { label: "Spearman (unseen JDs)", value: 0.87 }
+  - { label: "Spearman (unseen JDs)", value: 0.86 }
   - { label: "MAE", value: 0.10 }
   - { label: "Industries < 0.15 MAE", textValue: "13/14" }
   - { label: "Batch ranking", textValue: "106 resumes / 1.1 s" }
@@ -86,7 +88,7 @@ challengesSolutions:
   - challenge: "The best internal model (RoBERTa cross-encoder, 0.89 Spearman) collapsed to −0.61 Spearman on job postings outside the training pool — it had memorized 200 JDs (312k parameters per training example)."
     solution: "Built a 212-pair external test set from 53 unseen postings, made it the only reported metric, and ablated four fixes (3× augmentation, weight decay, smaller DistilRoBERTa, 5-fold ensemble). None beat the calibrated bi-encoder, so the evidence — not the leaderboard — picked the architecture."
   - challenge: "CoSENT-trained bi-encoders compressed every score into 0.5–0.9, so a 16% match displayed as '78% match'."
-    solution: "Trained with a combined CoSENT + cosine-similarity objective and added isotonic calibration fitted on external data, cutting MAE from 0.23 to 0.10 while preserving ranking."
+    solution: "Trained with a combined CoSENT + cosine-similarity objective and added Platt calibration fitted on external data, cutting MAE from 0.23 to 0.10 while preserving ranking (isotonic regression performs identically within bootstrap noise; Platt ships because it can't overfit a 106-pair calibration set)."
   - challenge: "83% of JDs exceeded the 512-token context window, and the requirements section — the highest-signal content — sits at the end and got truncated away."
     solution: "Wrote a preprocessing step that strips boilerplate (EEO, benefits, salary) and re-prioritizes requirements/qualifications sections into the context window."
 
@@ -128,7 +130,7 @@ score resume–job fit on a calibrated 0–100% scale, validated exclusively on 
 model never trained on, and served through a Streamlit app that explains every verdict with
 a requirement-by-requirement skill-gap analysis.
 
-The headline result — **0.867 Spearman / 0.100 MAE on 106 fully held-out external pairs** —
+The headline result — **0.86 Spearman / 0.10 MAE on 106 fully held-out external pairs** —
 matters less than how it was reached: the study caught its own best internal model
 catastrophically overfitting (0.89 → −0.61 Spearman), ablated four fixes, proved none of
 them beat a simpler calibrated bi-encoder, and rebuilt the production system around that

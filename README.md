@@ -5,8 +5,10 @@ Fine-tuned sentence-transformer system that scores how well a resume fits a job 
 has never seen.
 
 **Final model:** `all-mpnet-base-v2` fine-tuned with a combined ranking + calibration loss,
-plus isotonic score calibration — **Spearman 0.867, MAE 0.100 on 106 fully held-out pairs
-from unseen job postings**, with 13 of 14 industries under 0.15 MAE.
+plus Platt score calibration — **Spearman 0.86, MAE 0.10 on 106 fully held-out pairs
+from unseen job postings**, with 13 of 14 industries under 0.15 MAE. Platt is the
+production calibrator (a 2-parameter sigmoid can't overfit a 106-pair calibration set);
+isotonic regression scores identically within bootstrap noise.
 
 | | |
 |---|---|
@@ -49,7 +51,7 @@ shuffling, sentence dropping, keyword noise), weight decay, a smaller DistilRoBE
 beat the simple calibrated bi-encoder (0.77).** At this data scale, architecture capacity
 is a liability, not an asset.
 
-### 5. Production v2 (`Notebooks/05`)
+### 5. Production v2 (`Notebooks/05`) → Production v3 (`Notebooks/06`, current)
 Acted on the evidence instead of the leaderboard instinct:
 - **62 % more unique JDs** (815 pairs / 305 postings) — data beats architecture.
 - **Combined loss** (CoSENT + CosineSimilarity): gradient signal for ranking *and* absolute score.
@@ -60,13 +62,24 @@ Acted on the evidence instead of the leaderboard instinct:
 
 | Model | Spearman ↑ | MAE ↓ |
 |---|---|---|
-| **MPNet + isotonic calibration (production)** | **0.8667** | **0.1005** |
-| MPNet + Platt calibration | 0.8645 | 0.1021 |
+| **MPNet + Platt calibration (production)** | **0.8645** | **0.1021** |
+| MPNet + isotonic calibration | 0.8667 | 0.1005 |
 | MPNet raw (combined loss) | 0.8645 | 0.1325 |
 | DistilRoBERTa cross-encoder (aug + reg) | 0.8379 | 0.1816 |
 | RoBERTa cross-encoder (aug + reg) | 0.6514 | 0.2209 |
 
+The two calibrators are statistically tied — the 0.002 MAE gap is well inside
+run-to-run training noise and the bootstrap confidence interval on a 106-pair test
+set. Platt ships because its 2-parameter sigmoid cannot overfit a small calibration
+split, while isotonic's step function can (it fits the calibration set noticeably
+tighter than it generalizes). Notebook 06 quantifies the tie with a bootstrap.
+
 Batch ranking: 106 resumes scored against one JD in ~1.1 s (T4).
+
+Production v3 (`Notebooks/06`) hardens this result: multi-seed training with
+mean ± std reporting, a base-model baseline on the same held-out test, a bootstrap
+comparison proving the Platt/isotonic tie, and a recruiter-facing top-candidate
+ranking metric — plus HF Hub publishing so the live demo serves the real model.
 
 ![Production model comparison](Results/05_production_v2_fig1.png)
 
@@ -75,9 +88,12 @@ Batch ranking: 106 resumes scored against one JD in ~1.1 s (T4).
 ## Repository map
 
 ```
-Notebooks/           The five research notebooks (03–05 include executed outputs)
+Notebooks/           Research notebooks 01–05 (03–05 with executed outputs)
+                     + 06_production_v3.ipynb — the current production run
+                       (multi-seed, bootstrap calibrator test, HF Hub publish)
 Data/                Training + external test CSVs
 Results/             Extracted charts + results_summary.json
+models/              platt_calibrator.pkl (production calibrator; weights on HF Hub)
 src/train.py         Reproduces the production pipeline end-to-end
 app/                 Streamlit demo (score + skill-gap explanation)
 tests/               Pytest suite for the pure-Python pipeline pieces
