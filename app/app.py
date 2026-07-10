@@ -14,6 +14,14 @@ import pickle
 import sys
 from pathlib import Path
 
+# On Windows machines behind TLS-inspecting proxies/AV, Python's bundled CA store
+# can't verify huggingface.co — use the OS certificate store instead. No-op elsewhere.
+try:
+    import truststore
+    truststore.inject_into_ssl()
+except ImportError:
+    pass
+
 import streamlit as st
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -25,28 +33,51 @@ from src.text_utils import preprocess_resume, smart_truncate_jd
 
 MODEL_ID = os.getenv("MODEL_ID", "dlepighe1/resume-jd-matcher-mpnet")
 LOCAL_MODEL_DIR = ROOT / "models" / "mpnet-resume-matcher"
-CALIBRATOR_PATH = ROOT / "models" / "isotonic_calibrator.pkl"
+# Platt first (production choice — robust on small calibration sets), isotonic fallback
+CALIBRATOR_PATHS = [
+    ROOT / "models" / "platt_calibrator.pkl",
+    ROOT / "models" / "isotonic_calibrator.pkl",
+]
 MIN_WORDS = 50
 
 st.set_page_config(page_title="ResumeAI — Resume ↔ JD Matcher", page_icon="🎯", layout="wide")
 
 
+def _load_calibrator():
+    """Load the first available calibrator pickle.
+
+    Calibrators pickled inside a Colab notebook record their class under
+    __main__ — register our PlattCalibrator there so unpickling resolves.
+    """
+    import __main__
+    from src.train import PlattCalibrator
+    __main__.PlattCalibrator = PlattCalibrator
+
+    for path in CALIBRATOR_PATHS:
+        if path.exists():
+            with open(path, "rb") as f:
+                return pickle.load(f), path.stem.replace("_calibrator", "")
+    return None, None
+
+
 @st.cache_resource(show_spinner="Loading matching model…")
 def load_model():
-    """Returns (model, calibrator_or_None, fine_tuned: bool, source: str)."""
+    """Returns (model, calibrator_or_None, calibrator_name, fine_tuned: bool, source: str)."""
     from sentence_transformers import SentenceTransformer
 
-    calibrator = None
-    if CALIBRATOR_PATH.exists():
-        with open(CALIBRATOR_PATH, "rb") as f:
-            calibrator = pickle.load(f)
+    calibrator, calibrator_name = _load_calibrator()
 
     if LOCAL_MODEL_DIR.exists():
-        return SentenceTransformer(str(LOCAL_MODEL_DIR)), calibrator, True, "local checkpoint"
+        return SentenceTransformer(str(LOCAL_MODEL_DIR)), calibrator, calibrator_name, True, "local checkpoint"
     try:
-        return SentenceTransformer(MODEL_ID), calibrator, True, f"HF Hub ({MODEL_ID})"
+        return SentenceTransformer(MODEL_ID), calibrator, calibrator_name, True, f"HF Hub ({MODEL_ID})"
     except Exception:
-        return SentenceTransformer("all-mpnet-base-v2"), None, False, "base model (fallback)"
+        pass
+    try:
+        # Calibrators map the FINE-TUNED model's cosines — never apply them to base MPNet
+        return SentenceTransformer("all-mpnet-base-v2"), None, None, False, "base model (fallback)"
+    except Exception as e:
+        return None, None, None, False, f"unavailable ({type(e).__name__})"
 
 
 def score_pair(model, calibrator, resume_text: str, jd_text: str) -> float:
@@ -58,16 +89,28 @@ def score_pair(model, calibrator, resume_text: str, jd_text: str) -> float:
     j_emb = model.encode([jd], show_progress_bar=False)
     raw = float(cosine_similarity(r_emb, j_emb)[0][0])
     if calibrator is not None:
-        return float(calibrator.predict([raw])[0])
+        if hasattr(calibrator, "predict"):  # sklearn IsotonicRegression
+            return float(calibrator.predict([raw])[0])
+        return float(calibrator([raw])[0])  # PlattCalibrator is callable
     return max(0.0, min(1.0, raw))
 
 
-model, calibrator, fine_tuned, model_source = load_model()
+model, calibrator, calibrator_name, fine_tuned, model_source = load_model()
+
+if model is None:
+    st.error(
+        "❌ Could not load any model — no local checkpoint, and downloads from "
+        "HuggingFace failed. Check the network connection (corporate proxies: "
+        "`pip install truststore`), or place fine-tuned weights in "
+        "`models/mpnet-resume-matcher/`. "
+        f"Last error source: {model_source}"
+    )
+    st.stop()
 
 st.title("🎯 ResumeAI — Resume ↔ Job Description Matcher")
 st.caption(
-    "Fine-tuned MPNet embeddings + isotonic calibration · "
-    "Spearman 0.867 / MAE 0.100 on 106 held-out pairs from unseen job postings"
+    "Fine-tuned MPNet embeddings + Platt calibration · "
+    "Spearman 0.86 / MAE 0.10 on 106 held-out pairs from unseen job postings"
 )
 
 if not fine_tuned:
@@ -80,7 +123,7 @@ if not fine_tuned:
 elif calibrator is None:
     st.info(
         "Fine-tuned model loaded, but no calibrator found — showing raw cosine "
-        "similarity. Run `python src/train.py` to produce `models/isotonic_calibrator.pkl`."
+        "similarity. Run `python src/train.py` to produce `models/platt_calibrator.pkl`."
     )
 
 col_resume, col_jd = st.columns(2)
@@ -139,7 +182,9 @@ if st.button("Score match", type="primary", use_container_width=True):
 
 st.divider()
 st.caption(
-    f"Model source: {model_source} · "
+    f"Model source: {model_source}"
+    + (f" · calibrator: {calibrator_name}" if calibrator_name else "")
+    + " · "
     "[GitHub](https://github.com/dlepighe1/Resume-jd-matcher) · "
     "Research: 5 notebooks, external validation on 212 pairs from 53 unseen JDs"
 )

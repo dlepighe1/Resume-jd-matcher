@@ -1,19 +1,14 @@
 # Deploying the demo to HuggingFace Spaces
 
-Prerequisite: the fine-tuned model is on HF Hub. After rerunning training in Colab
-(`Notebooks/05_production_v2.ipynb` or `python src/train.py` in a Colab cell):
-
-```python
-model.push_to_hub("dlepighe1/resume-jd-matcher-mpnet")
-```
-
-and download `models/isotonic_calibrator.pkl` from the Colab run into this repo's
-`models/` folder (it's small — commit it to the Space, not to GitHub).
+Prerequisite: the fine-tuned model is on HF Hub. Run `Notebooks/06_production_v3.ipynb`
+in Colab — its final cell pushes the model, both calibrators, and a model card to
+`dlepighe1/resume-jd-matcher-mpnet` automatically. Also download `platt_calibrator.pkl`
+from the run into this repo's `models/` folder (tiny — it's committed to git).
 
 ## Create the Space
 
 1. huggingface.co → New Space → SDK: **Streamlit** → name: `resume-jd-matcher`
-2. Upload from this repo: `app/`, `src/`, `requirements.txt`, and `models/isotonic_calibrator.pkl`
+2. Upload from this repo: `app/`, `src/`, `requirements.txt`, and `models/platt_calibrator.pkl`
 3. Add a `README.md` header to the Space so it uses the right entry point:
 
 ```yaml

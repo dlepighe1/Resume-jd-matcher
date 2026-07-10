@@ -37,14 +37,16 @@
     "industries_below_0.15_mae": "13 of 14 (Marketing/Growth at 0.158)"
   },
   "production_model": {
-    "name": "all-mpnet-base-v2 fine-tuned with combined CoSENT + CosineSimilarity loss, + isotonic calibration fitted on external calibration split",
-    "spearman": 0.8667,
-    "mae": 0.1005,
+    "name": "all-mpnet-base-v2 fine-tuned with combined CoSENT + CosineSimilarity loss, + Platt calibration fitted on external calibration split",
+    "spearman": 0.8645,
+    "mae": 0.1021,
+    "calibrator_choice_note": "Platt and isotonic are statistically tied on the 106-pair test (delta MAE ~0.002, inside bootstrap noise and run-to-run training variance). Platt ships: a 2-parameter sigmoid cannot overfit a 106-pair calibration split, while isotonic's step function fits the calibration set tighter than it generalizes.",
     "batch_ranking_speed": "106 resumes ranked in ~1.1 s (T4 GPU)"
   },
   "charts": {
     "Results/03_final_study_external_eval_fig1.png": "Architecture comparison — internal test (Spearman / MAE / speed + scatter plots)",
     "Results/04_overfitting_fixes_fig1.png": "Overfitting fixes compared on the 212-pair external test",
-    "Results/05_production_v2_fig1.png": "Production v2 models on the 106-pair external final test"
+    "Results/05_production_v2_fig1.png": "Production v2 models on the 106-pair external final test",
+    "Results/production_model_comparison_2026-07-07.png": "Production v2 rerun (2026-07-07, Colab) — calibrator ordering flipped vs first run, confirming the Platt/isotonic statistical tie"
   }
 }

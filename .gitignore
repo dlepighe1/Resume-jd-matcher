@@ -1,5 +1,6 @@
-# Model weights (regenerate with src/train.py; ~420 MB)
-models/
+# Model weights (regenerate with src/train.py; ~420 MB) — but keep tiny calibrators
+models/*
+!models/*.pkl
 
 # Python
 __pycache__/
