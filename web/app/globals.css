@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+/* Swiss-minimal design system: high contrast, generous whitespace, grid-based.
+   Fira Code for numerals and headings (this is a data tool — the technical
+   register is the point), Fira Sans for prose. */
+@theme {
+  --font-sans: var(--font-fira-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-fira-code), ui-monospace, monospace;
+
+  --color-brand: #2563eb;
+  --color-brand-hover: #1d4ed8;
+  --color-accent: #f97316;
+  --color-accent-hover: #ea580c;
+}
+
+/* Tailwind's `dark:` variant follows prefers-color-scheme by default, so both
+   themes are styled inline at each call site rather than through a token flip. */
+body {
+  @apply bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-200;
+  font-family: var(--font-sans);
+}
+
+/* Tabular figures everywhere numbers are compared, so the score digits don't
+   jitter as they change width. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

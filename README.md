@@ -10,12 +10,19 @@ from unseen job postings**, with 13 of 14 industries under 0.15 MAE. Platt is th
 production calibrator (a 2-parameter sigmoid can't overfit a 106-pair calibration set);
 isotonic regression scores identically within bootstrap noise.
 
+**The app is a three-engine comparison harness.** The same resume/JD pair is scored by the
+fine-tuned model, by Claude, and by a free open-weights model, side by side — because the
+interesting question isn't "what does an LLM say", it's *whether a small purpose-built model
+beats a general one, and how you'd know*. Only one of the three has an external-validation
+number behind it, and the UI says which.
+
 | | |
 |---|---|
-| 🎯 Live demo | *(HuggingFace Space — link coming after model upload)* |
+| 🎯 Live demo | *(Vercel — link coming)* |
 | 📊 Full metrics | [`Results/results_summary.json`](Results/results_summary.json) |
-| 📓 Research notebooks | [`Notebooks/`](Notebooks/) — five notebooks, in story order |
+| 📓 Research notebooks | [`Notebooks/`](Notebooks/) — six notebooks, in story order |
 | 🔁 Reproduce | `python src/train.py` (details below) |
+| 🧪 Tests | 104, all offline — no model downloads, no API calls |
 
 ---
 
@@ -85,18 +92,41 @@ ranking metric — plus HF Hub publishing so the live demo serves the real model
 
 ---
 
+## Architecture
+
+Three engines score the same resume/JD pair, and the app is explicit about which one has
+evidence behind it. The fine-tuned model is ~420 MB of PyTorch — far past a Vercel
+serverless function — so it lives in its own service and Next.js calls it over HTTP.
+
+```
+  Browser ── Next.js (Vercel) ──┬── lib/providers/claude.ts      → Anthropic Messages API
+                                ├── lib/providers/openrouter.ts  → free open-weights model
+                                └── lib/providers/finetuned.ts   → FastAPI service (HF Space)
+                                                                      │
+                                     Supabase (Postgres)              └─ fine-tuned MPNet
+                                     shareable results                   + Platt calibrator
+                                                                         reusing src/ + app/
+```
+
+The three are **not** interchangeable, and the UI says so rather than pretending: the
+fine-tuned model is an embedding scorer — it produces a calibrated score and a
+requirement-by-requirement gap, but it cannot write prose. Each provider declares its
+capabilities and the UI renders only what that engine can actually do.
+
 ## Repository map
 
 ```
-Notebooks/           Research notebooks 01–05 (03–05 with executed outputs)
-                     + 06_production_v3.ipynb — the current production run
-                       (multi-seed, bootstrap calibrator test, HF Hub publish)
+Notebooks/           Research notebooks 01–06, in story order
 Data/                Training + external test CSVs
 Results/             Extracted charts + results_summary.json
 models/              platt_calibrator.pkl (production calibrator; weights on HF Hub)
-src/train.py         Reproduces the production pipeline end-to-end
-app/                 Streamlit demo (score + skill-gap explanation)
-tests/               Pytest suite for the pure-Python pipeline pieces
+src/                 text_utils, augment, train — the model pipeline
+app/explain.py       Skill-gap analysis (shared by the scoring service)
+service/             FastAPI scoring service — serves the fine-tuned model over HTTP
+web/                 Next.js 16 app (App Router, TypeScript, Tailwind 4)
+supabase/schema.sql  Table + row-level security for shareable results
+tests/, service/     Offline pytest suites
+web/**/*.test.ts     Offline vitest suites
 ```
 
 ## Dataset provenance (honest version)
@@ -127,17 +157,67 @@ python src/train.py --push-to-hub USER/resume-jd-matcher-mpnet   # optionally pu
 `train.py` prints the final external-test table and writes `models/` (model + calibrators)
 plus `Results/training_metrics.json`.
 
-## Running the demo app
+## Running it locally
+
+Two processes: the scoring service (Python) and the web app (Next.js).
 
 ```bash
-pip install -r requirements.txt
-streamlit run app/app.py
+# 1. Scoring service — serves the fine-tuned model
+pip install -r service/requirements.txt
+uvicorn service.main:app --reload --port 8000
+
+# 2. Web app
+cd web
+npm install
+cp .env.example .env.local     # fill in the keys you want; see below
+npm run dev                    # http://localhost:3000
 ```
 
-Paste a resume and a job description → calibrated match score, verdict, and a requirement-by-
-requirement skill-gap table showing what the resume covers (with the evidence line) and what
-it's missing. Optional: set `ANTHROPIC_API_KEY` to add an LLM-written fit critique. Without
-the fine-tuned weights on HF Hub the app falls back to base MPNet and says so in a banner.
+**You only need the keys for the engines you want to use.** Each is read lazily, so the
+app runs fine with just one configured — selecting an unconfigured engine returns a
+`CONFIG_ERROR` naming exactly which variable to set, instead of the whole app refusing to
+boot.
+
+| Variable | For |
+|---|---|
+| `ANTHROPIC_API_KEY` | Claude engine. `ANTHROPIC_MODEL` defaults to `claude-opus-4-8`; set `claude-sonnet-5` for ~3× cheaper inference |
+| `OPENROUTER_API_KEY` + `OPENROUTER_MODEL` | Free open-weights engine. **No default model** — free slugs rotate and get retired, so pick a current one from [openrouter.ai/models?q=free](https://openrouter.ai/models?q=free) |
+| `SCORING_SERVICE_URL` | The Python service (`http://localhost:8000` locally) |
+| `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` | Optional. Without them the app still analyzes — it just can't offer shareable links |
+
+## Running the tests
+
+```bash
+pytest                # 61 tests — src/, app/, and the scoring service
+cd web && npm test    # 43 tests — providers, API routes, persistence
+```
+
+**Every one of these is offline.** No test downloads a model, calls the Anthropic or
+OpenRouter API, or touches a database — the sentence-transformer is replaced by a stub
+encoder with hand-chosen vectors, and the LLM providers by a stubbed transport. That
+means assertions about similarity bands (`covered` / `partial` / `missing`), calibration,
+and JSON repair are exact rather than dependent on a live model's mood, and the suite
+costs nothing to run.
+
+The tests that matter most are the ones guarding invariants that would fail *silently*:
+
+- the fine-tuned calibrator is **never** applied to base MPNet (it maps the fine-tuned
+  model's cosine distribution; on base MPNet it would produce confident nonsense)
+- inputs get the same 350-word preprocessing the model was **trained** under
+- stored analyses are **private by default**, and a shared-link read only ever returns
+  rows that were explicitly shared
+- one engine failing in comparison mode never blanks out the others
+
+Each of those was mutation-tested: the bug was injected, the suite was confirmed to catch
+it, and the source restored.
+
+## Deploying
+
+| Piece | Where | Notes |
+|---|---|---|
+| Web app | Vercel | Set the project root to `web/`. Add the env vars above. |
+| Scoring service | HuggingFace Space (Docker SDK) | The root `Dockerfile` builds it. Point `SCORING_SERVICE_URL` at the Space. Free Spaces sleep when idle — the first request pays a cold start, which the UI surfaces honestly rather than hanging on a spinner. |
+| Database | Supabase | Run `supabase/schema.sql`. Row-level security is on; the service-role key stays server-side. |
 
 ## What I learned
 
