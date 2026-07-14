@@ -18,7 +18,14 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Secrets
+# Node / Next.js
+node_modules/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# Secrets — .env.example is committed, real values never are
 .env
-.streamlit/secrets.toml
+.env*.local
 .claude/
