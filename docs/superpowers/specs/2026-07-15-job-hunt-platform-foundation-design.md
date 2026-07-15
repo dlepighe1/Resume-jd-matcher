@@ -19,8 +19,8 @@ spec → plan → build) add Network, then Outreach.
 ## 2. Goals
 
 - Turn the demo into a real product: landing page → sign-up → dashboard.
-- Authentication via **Clerk** (Google, Facebook, email/password) with a
-  try-before-signup guest path.
+- Authentication via **Clerk** (Google + email/password) with a
+  try-before-signup guest path. (Facebook and other social providers deferred.)
 - Move the existing matcher into the authed dashboard, with an **engine picker**
   that runs **only the selected engine on demand** (no auto-parallel), preserving
   per-engine comparison detail (scores + validation metrics).
@@ -38,7 +38,7 @@ spec → plan → build) add Network, then Outreach.
 
 | Decision | Choice | Rationale |
 |---|---|---|
-| Auth provider | **Clerk** | Native Google/Facebook/email; hosted UI. |
+| Auth provider | **Clerk** | Hosted UI; **Google + email/password only** for Phase 1 (other socials deferred). |
 | Guest handling | **Try-before-signup** (matcher usable un-authed, nothing saved) | Clerk has no first-class anonymous auth; standard SaaS funnel. |
 | Clerk ↔ Supabase | Clerk owns identity; **Next.js server owns authz** via service-role Supabase scoped to Clerk `userId` | Matches existing `analyses` pattern; avoids wiring Clerk JWT into RLS. |
 | Engine runs | **On-demand, single engine per Analyze** | Cost control; no token burn from auto-parallel. |
@@ -71,7 +71,8 @@ middleware.ts             # Clerk: (marketing) public; (app) requires auth EXCEP
 
 ### 5.2 Auth & Authorization
 
-- Clerk `<SignIn>` / `<SignUp>` components; providers: Google, Facebook, email/password.
+- Clerk `<SignIn>` / `<SignUp>` components; providers: **Google + email/password**
+  (Facebook and other socials deferred to a later phase).
 - **Guest / try-before-signup:** the Matcher route renders and analyzes without a
   session. Guarded actions — save to Applications, selecting a paid engine, opening
   Applications/Network/Outreach — trigger Clerk sign-in.
@@ -188,7 +189,8 @@ create table applications (
 - **Guest matcher** must be genuinely non-persisting and rate-limited (reuse existing
   `rate-limit.ts`) to avoid abuse.
 - **Coming-soon capture** stores emails — keep it minimal and disclosed.
-- Facebook OAuth app review can take time; Google + email can ship first if needed.
+- Phase 1 ships **Google + email/password only**. Additional social providers
+  (e.g. Facebook, which needs OAuth app review) are deliberately deferred.
 
 ## 10. Out-of-scope future phases
 
