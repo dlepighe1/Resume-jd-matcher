@@ -53,7 +53,7 @@ export default function ComparePage() {
     <main className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
       <header className="mb-8">
         <Link
-          href="/"
+          href="/matcher"
           className="font-mono text-xs text-slate-500 underline-offset-4 hover:underline dark:text-slate-400"
         >
           ← Back to the analyzer
