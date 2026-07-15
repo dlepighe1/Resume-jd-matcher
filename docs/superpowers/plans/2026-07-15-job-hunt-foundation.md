@@ -29,7 +29,7 @@ All commands run from `web/`.
 
 ```
 web/
-  middleware.ts                       # CREATE — Clerk middleware; public marketing, guarded app
+  proxy.ts                            # CREATE — Clerk middleware (Next 16.2 renamed middleware.ts -> proxy.ts); public marketing, guarded app
   .env.example                        # MODIFY — add Clerk keys
   app/
     layout.tsx                        # MODIFY — wrap in <ClerkProvider>
@@ -68,7 +68,7 @@ web/
 - Modify: `web/package.json` (via install)
 - Modify: `web/.env.example`
 - Modify: `web/app/layout.tsx`
-- Create: `web/middleware.ts`
+- Create: `web/proxy.ts` (Next 16.2 renamed the `middleware.ts` convention to `proxy.ts`)
 
 - [ ] **Step 1: Install Clerk**
 
@@ -95,7 +95,7 @@ Then create real values in `web/.env.local` (never committed). In the Clerk dash
 
 Modify `web/app/layout.tsx` — import the provider from `@clerk/nextjs` and wrap the existing `<html>…</html>` tree. Keep the Fira font variables and metadata intact. (Verify the provider's exact placement requirement in the installed README — some versions wrap `<html>`, others wrap `<body>`'s children.)
 
-- [ ] **Step 5: Create `web/middleware.ts`**
+- [ ] **Step 5: Create `web/proxy.ts`** (Next 16.2 renamed `middleware.ts` → `proxy.ts`; verify against installed docs)
 
 Intended shape (reconcile with installed API):
 ```ts
@@ -125,7 +125,7 @@ Run: `npm run dev` and load `/`. Expected: no Clerk provider errors in the conso
 - [ ] **Step 7: Commit**
 
 ```bash
-git add web/package.json web/package-lock.json web/.env.example web/app/layout.tsx web/middleware.ts
+git add web/package.json web/package-lock.json web/.env.example web/app/layout.tsx web/proxy.ts
 git commit -m "feat(auth): install and wire Clerk provider + middleware"
 ```
 
