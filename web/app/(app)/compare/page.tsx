@@ -50,7 +50,7 @@ export default function ComparePage() {
   const spread = scores.length > 1 ? Math.max(...scores) - Math.min(...scores) : null;
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
+    <>
       <header className="mb-8">
         <Link
           href="/matcher"
@@ -174,7 +174,7 @@ export default function ComparePage() {
           ))}
         </div>
       </div>
-    </main>
+    </>
   );
 }
 

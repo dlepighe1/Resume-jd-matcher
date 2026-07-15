@@ -114,7 +114,7 @@ export default function Home() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
+    <>
       <header className="mb-10">
         <h1 className="font-mono text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl dark:text-slate-50">
           Resume ↔ Job Match Analyzer
@@ -289,7 +289,7 @@ export default function Home() {
           )}
         </div>
       </div>
-    </main>
+    </>
   );
 }
 
