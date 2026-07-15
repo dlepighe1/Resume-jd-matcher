@@ -12,6 +12,9 @@ venv/
 # graphify artifacts
 graphify-out/
 
+# brainstorming visual companion mockups
+.superpowers/
+
 # OS / editor
 .DS_Store
 Thumbs.db
