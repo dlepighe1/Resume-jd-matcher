@@ -434,12 +434,12 @@ export function NavMenu() {
 
 - [ ] **Step 2: Implement `Navbar.tsx`**
 
-Logo left, `NavMenu` center, `ThemeToggle` + Clerk `<UserButton>` (with `<SignInButton>` fallback for guests) right. Verify Clerk component names against the installed README.
+Logo left, `NavMenu` center, `ThemeToggle` + Clerk `<UserButton>` (with `<SignInButton>` fallback for guests) right. NOTE: Clerk 7.5.18 (installed) does **not** export `SignedIn`/`SignedOut` — it exports a single server component `<Show when="signed-in" fallback={…}>`. Verified against `node_modules/@clerk/nextjs/dist/types/index.d.ts`.
 
 ```tsx
 // web/components/Navbar.tsx
 import Link from "next/link";
-import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
+import { Show, SignInButton, UserButton } from "@clerk/nextjs";
 import { NavMenu } from "./NavMenu";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -453,12 +453,16 @@ export function Navbar() {
       <NavMenu />
       <div className="flex items-center gap-3">
         <ThemeToggle />
-        <SignedIn><UserButton /></SignedIn>
-        <SignedOut>
-          <SignInButton mode="modal">
-            <button className="rounded-lg bg-[var(--color-accent)] px-3 py-1.5 text-sm font-semibold text-white">Sign in</button>
-          </SignInButton>
-        </SignedOut>
+        <Show
+          when="signed-in"
+          fallback={
+            <SignInButton mode="modal">
+              <button className="rounded-lg bg-[var(--color-accent)] px-3 py-1.5 text-sm font-semibold text-white">Sign in</button>
+            </SignInButton>
+          }
+        >
+          <UserButton />
+        </Show>
       </div>
     </header>
   );
