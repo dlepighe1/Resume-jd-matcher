@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Tailwind 4 defaults `dark:` to the `prefers-color-scheme` media query. The
+   ThemeToggle component sets/removes a `.dark` class on <html>, so redefine
+   the variant to key off that class instead (falls back to matching nested
+   elements too). */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Swiss-minimal design system: high contrast, generous whitespace, grid-based.
    Fira Code for numerals and headings (this is a data tool — the technical
    register is the point), Fira Sans for prose. */
@@ -13,8 +19,9 @@
   --color-accent-hover: #ea580c;
 }
 
-/* Tailwind's `dark:` variant follows prefers-color-scheme by default, so both
-   themes are styled inline at each call site rather than through a token flip. */
+/* `dark:` is keyed off the `.dark` class (see @custom-variant above), toggled
+   by ThemeToggle; both themes are styled inline at each call site rather than
+   through a token flip. */
 body {
   @apply bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-200;
   font-family: var(--font-sans);
