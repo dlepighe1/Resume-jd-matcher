@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ClerkProvider } from "@clerk/nextjs";
 import { Fira_Code, Fira_Sans } from "next/font/google";
 import "./globals.css";
 
@@ -28,11 +29,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${firaSans.variable} ${firaCode.variable} h-full antialiased`}
-    >
-      <body className="flex min-h-full flex-col">{children}</body>
-    </html>
+    <ClerkProvider>
+      <html
+        lang="en"
+        className={`${firaSans.variable} ${firaCode.variable} h-full antialiased`}
+      >
+        <body className="flex min-h-full flex-col">{children}</body>
+      </html>
+    </ClerkProvider>
   );
 }
