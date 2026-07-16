@@ -118,13 +118,21 @@ export async function joinWaitlist(input: {
   email: string;
   feature: WaitlistFeature;
 }): Promise<boolean> {
-  const { error } = await serverClient()
-    .from("waitlist")
-    .insert({ email: input.email, feature: input.feature });
+  try {
+    const { error } = await serverClient()
+      .from("waitlist")
+      .insert({ email: input.email, feature: input.feature });
 
-  if (error) {
-    console.error("Failed to record waitlist signup:", error.message);
+    if (error) {
+      console.error("Failed to record waitlist signup:", error.message);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    // A rejected insert promise (DNS, network, a thrown client) must still resolve to
+    // false — the route relies on that for its controlled 500, and a marketing form
+    // should never leak a raw error to a visitor.
+    console.error("Failed to record waitlist signup:", error);
     return false;
   }
-  return true;
 }

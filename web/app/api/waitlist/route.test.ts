@@ -17,6 +17,15 @@ function notify(body: unknown) {
   );
 }
 
+function notifyRaw(rawBody: string) {
+  return POST(
+    new Request("http://localhost/api/waitlist", {
+      method: "POST",
+      body: rawBody,
+    }),
+  );
+}
+
 beforeEach(() => {
   // Without this, call history leaks across tests and every not.toHaveBeenCalled()
   // assertion sees the previous test's call.
@@ -38,6 +47,20 @@ describe("POST /api/waitlist", () => {
 
     expect(response.status).toBe(400);
     expect(joinWaitlist).not.toHaveBeenCalled();
+  });
+
+  it("rejects a body that is not valid JSON", async () => {
+    const response = await notifyRaw("this is not json {");
+
+    expect(response.status).toBe(400);
+    expect(joinWaitlist).not.toHaveBeenCalled();
+  });
+
+  it("normalizes the email — trims whitespace and lowercases — before inserting", async () => {
+    const response = await notify({ email: "  Person@Example.COM ", feature: "network" });
+
+    expect(response.status).toBe(200);
+    expect(joinWaitlist).toHaveBeenCalledWith({ email: "person@example.com", feature: "network" });
   });
 
   it("accepts a valid signup and inserts it", async () => {

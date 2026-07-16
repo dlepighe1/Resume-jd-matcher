@@ -4,7 +4,14 @@ import { z } from "zod";
 import { isPersistenceConfigured, joinWaitlist } from "@/lib/db";
 
 const requestSchema = z.object({
-  email: z.email(),
+  // Trim + lowercase BEFORE validating, so " Person@Example.COM " both passes email
+  // validation and is stored in a single canonical form (future dedupe can't be defeated
+  // by casing or stray whitespace). Bounded at 254 — the RFC 5321 practical maximum — so
+  // this public, unauthenticated, unmetered write can't be used to stuff huge rows.
+  email: z.preprocess(
+    (value) => (typeof value === "string" ? value.trim().toLowerCase() : value),
+    z.email().max(254),
+  ),
   feature: z.enum(["network", "outreach", "general"]),
 });
 
