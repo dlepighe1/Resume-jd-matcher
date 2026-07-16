@@ -66,7 +66,10 @@ function TeaserCard({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, feature }),
       });
-      const data = await response.json();
+      // Guard against a non-JSON body (e.g. a 5xx with an HTML/empty payload) so it
+      // reports the real HTTP failure instead of falling into the catch and mislabeling
+      // it as a network error.
+      const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
         setErrorMessage(data.message ?? "Could not save your signup.");
@@ -91,7 +94,10 @@ function TeaserCard({
       </p>
 
       {status === "success" ? (
-        <p className="mt-4 flex items-center gap-2 text-sm font-medium text-emerald-700 dark:text-emerald-400">
+        <p
+          role="status"
+          className="mt-4 flex items-center gap-2 text-sm font-medium text-emerald-700 dark:text-emerald-400"
+        >
           <CheckCircleIcon className="h-5 w-5" />
           You&apos;re on the list — we&apos;ll email you when {title.toLowerCase()} launches.
         </p>
