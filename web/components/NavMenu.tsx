@@ -8,7 +8,7 @@ export function NavMenu() {
   return (
     <nav className="flex items-center gap-6 text-sm">
       {NAV_ITEMS.map((item) => {
-        const active = pathname.startsWith(item.href);
+        const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
         if (item.comingSoon) {
           return (
             <span key={item.href} className="flex items-center gap-1.5 text-slate-500">

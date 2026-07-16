@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { nextTheme, type Theme } from "./theme";
+import { nextTheme } from "./theme";
 
 describe("nextTheme", () => {
   it("toggles light -> dark", () => { expect(nextTheme("light")).toBe("dark"); });

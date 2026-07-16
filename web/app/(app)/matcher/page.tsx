@@ -10,7 +10,7 @@ import { SpinnerIcon, TrendingUpIcon } from "@/components/icons";
 import { EXAMPLE_JD, EXAMPLE_RESUME } from "@/lib/examples";
 import { MIN_WORDS, wordCount, type AnalysisResult, type ProviderId } from "@/lib/types";
 
-export default function Home() {
+export default function MatcherPage() {
   const [jobDescription, setJobDescription] = useState("");
   const [resumeText, setResumeText] = useState("");
   const [provider, setProvider] = useState<ProviderId>("finetuned");
