@@ -32,3 +32,11 @@ drop policy if exists "shared analyses are publicly readable" on analyses;
 create policy "shared analyses are publicly readable"
   on analyses for select
   using (is_public = true);
+
+create table if not exists waitlist (
+  id         uuid primary key default gen_random_uuid(),
+  email      text not null,
+  feature    text not null check (feature in ('network','outreach','general')),
+  created_at timestamptz not null default now()
+);
+alter table waitlist enable row level security;  -- writes go through the server (service-role) only

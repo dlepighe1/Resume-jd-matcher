@@ -104,3 +104,27 @@ export async function publishAnalysis(id: string): Promise<boolean> {
   }
   return (count ?? 0) > 0;
 }
+
+/** A not-yet-shipped feature a visitor can ask to be notified about. */
+export type WaitlistFeature = "network" | "outreach" | "general";
+
+/**
+ * Record a "notify me" signup from the landing page.
+ *
+ * Returns false instead of throwing when the insert fails: a marketing form should never
+ * surface a raw DB error to a visitor who just wants to leave their email.
+ */
+export async function joinWaitlist(input: {
+  email: string;
+  feature: WaitlistFeature;
+}): Promise<boolean> {
+  const { error } = await serverClient()
+    .from("waitlist")
+    .insert({ email: input.email, feature: input.feature });
+
+  if (error) {
+    console.error("Failed to record waitlist signup:", error.message);
+    return false;
+  }
+  return true;
+}
