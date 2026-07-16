@@ -16,7 +16,7 @@ export function Navbar() {
         <Show
           when="signed-in"
           fallback={
-            <SignInButton mode="modal">
+            <SignInButton mode="modal" fallbackRedirectUrl="/matcher">
               <button className="rounded-lg bg-[var(--color-accent)] px-3 py-1.5 text-sm font-semibold text-white">Sign in</button>
             </SignInButton>
           }

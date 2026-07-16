@@ -48,7 +48,7 @@ export default async function SharedResultPage({ params }: PageProps) {
 
       <footer className="mt-10 border-t border-slate-200 pt-6 dark:border-slate-800">
         <Link
-          href="/"
+          href="/matcher"
           className="font-mono text-sm text-[var(--color-brand)] underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
         >
           Analyze your own resume →
