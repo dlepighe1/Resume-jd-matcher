@@ -1,16 +1,18 @@
-export type NavItem = {
+﻿export type NavItem = {
   label: string;
   href: string;
-  comingSoon: boolean;
+  icon: string;
 };
 
 export const NAV_ITEMS: readonly NavItem[] = [
-  { label: "Matcher", href: "/matcher", comingSoon: false },
-  { label: "Applications", href: "/applications", comingSoon: false },
-  { label: "Network", href: "/network", comingSoon: true },
-  { label: "Outreach", href: "/outreach", comingSoon: true },
+  { label: "Dashboard", href: "/dashboard", icon: "LayoutDashboard" },
+  { label: "Applications", href: "/applications", icon: "Briefcase" },
+  { label: "Resume", href: "/resumes", icon: "FileText" },
+  { label: "Network", href: "/network", icon: "Users" },
+  { label: "Outreach", href: "/outreach", icon: "Mail" },
+  { label: "Settings", href: "/settings", icon: "Settings" },
 ] as const;
 
 export function comingSoonHrefs(): string[] {
-  return NAV_ITEMS.filter((i) => i.comingSoon).map((i) => i.href);
+  return [];
 }

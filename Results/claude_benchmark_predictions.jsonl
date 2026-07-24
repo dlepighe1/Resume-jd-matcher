@@ -1,0 +1,199 @@
+{"id": 54, "claude_score": 28, "claude_pred": 0.28, "label": 0.531, "match_type": "partial", "tier": "structured"}
+{"id": 142, "claude_score": 22, "claude_pred": 0.22, "label": 0.393, "match_type": "partial", "tier": "structured"}
+{"id": 193, "claude_score": 35, "claude_pred": 0.35, "label": 0.818, "match_type": "strong", "tier": "structured"}
+{"id": 174, "claude_score": 28, "claude_pred": 0.28, "label": 0.463, "match_type": "partial", "tier": "structured"}
+{"id": 40, "claude_score": 5, "claude_pred": 0.05, "label": 0.103, "match_type": "weak", "tier": "structured"}
+{"id": 4, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 29, "claude_score": 38, "claude_pred": 0.38, "label": 0.854, "match_type": "strong", "tier": "structured"}
+{"id": 9, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 178, "claude_score": 36, "claude_pred": 0.36, "label": 0.687, "match_type": "good", "tier": "structured"}
+{"id": 129, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 45, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 204, "claude_score": 12, "claude_pred": 0.12, "label": 0.199, "match_type": "weak", "tier": "structured"}
+{"id": 133, "claude_score": 8, "claude_pred": 0.08, "label": 0.82, "match_type": "strong", "tier": "structured"}
+{"id": 109, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 101, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 205, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 126, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 18, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 50, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 20, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 184, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 146, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 32, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 100, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 137, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 168, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 132, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 12, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 7, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 63, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 83, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 89, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 11, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 17, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 80, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 145, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 31, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 162, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 82, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 47, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 170, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 106, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 207, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 26, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 187, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 58, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 102, "claude_score": 38, "claude_pred": 0.38, "label": 0.428, "match_type": "partial", "tier": "structured"}
+{"id": 112, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 108, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 25, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 155, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 52, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 111, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 33, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 156, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 6, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 153, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 210, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 167, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 208, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 90, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 99, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 150, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 24, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 103, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 149, "claude_score": 42, "claude_pred": 0.42, "label": 0.945, "match_type": "strong", "tier": "structured"}
+{"id": 190, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 160, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 165, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 76, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 161, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 201, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 169, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 55, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 93, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 147, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 27, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 105, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 53, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 166, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 36, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 171, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 59, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 202, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 70, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 131, "claude_score": 8, "claude_pred": 0.08, "label": 0.181, "match_type": "hard_negative", "tier": "structured"}
+{"id": 176, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 158, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 179, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 118, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 120, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 175, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 10, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 199, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 206, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 209, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 1, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 196, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 85, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 200, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 79, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 44, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 71, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 212, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 15, "error": "RateLimitError: Error code: 429 - {'message': 'Too many requests, please wait before trying again.'}"}
+{"id": 35, "claude_score": 12, "claude_pred": 0.12, "label": 0.335, "match_type": "hard_negative", "tier": "structured"}
+{"id": 4, "claude_score": 12, "claude_pred": 0.12, "label": 0.163, "match_type": "weak", "tier": "structured"}
+{"id": 9, "claude_score": 32, "claude_pred": 0.32, "label": 0.824, "match_type": "strong", "tier": "structured"}
+{"id": 45, "claude_score": 38, "claude_pred": 0.38, "label": 0.862, "match_type": "strong", "tier": "structured"}
+{"id": 129, "claude_score": 28, "claude_pred": 0.28, "label": 0.891, "match_type": "strong", "tier": "structured"}
+{"id": 101, "claude_score": 48, "claude_pred": 0.48, "label": 0.834, "match_type": "strong", "tier": "structured"}
+{"id": 109, "claude_score": 35, "claude_pred": 0.35, "label": 0.938, "match_type": "strong", "tier": "structured"}
+{"id": 126, "claude_score": 28, "claude_pred": 0.28, "label": 0.534, "match_type": "partial", "tier": "structured"}
+{"id": 205, "claude_score": 32, "claude_pred": 0.32, "label": 0.906, "match_type": "strong", "tier": "structured"}
+{"id": 18, "claude_score": 29, "claude_pred": 0.29, "label": 0.602, "match_type": "good", "tier": "structured"}
+{"id": 50, "claude_score": 63, "claude_pred": 0.63, "label": 0.624, "match_type": "good", "tier": "structured"}
+{"id": 20, "claude_score": 15, "claude_pred": 0.15, "label": 0.103, "match_type": "weak", "tier": "structured"}
+{"id": 184, "claude_score": 4, "claude_pred": 0.04, "label": 0.19, "match_type": "weak", "tier": "structured"}
+{"id": 146, "claude_score": 42, "claude_pred": 0.42, "label": 0.696, "match_type": "good", "tier": "structured"}
+{"id": 32, "claude_score": 8, "claude_pred": 0.08, "label": 0.117, "match_type": "weak", "tier": "structured"}
+{"id": 100, "claude_score": 8, "claude_pred": 0.08, "label": 0.054, "match_type": "weak", "tier": "structured"}
+{"id": 137, "claude_score": 28, "claude_pred": 0.28, "label": 0.835, "match_type": "strong", "tier": "structured"}
+{"id": 168, "claude_score": 24, "claude_pred": 0.24, "label": 0.161, "match_type": "weak", "tier": "structured"}
+{"id": 12, "claude_score": 5, "claude_pred": 0.05, "label": 0.079, "match_type": "weak", "tier": "structured"}
+{"id": 132, "claude_score": 5, "claude_pred": 0.05, "label": 0.153, "match_type": "weak", "tier": "structured"}
+{"id": 7, "claude_score": 18, "claude_pred": 0.18, "label": 0.239, "match_type": "hard_negative", "tier": "structured"}
+{"id": 83, "claude_score": 18, "claude_pred": 0.18, "label": 0.337, "match_type": "hard_negative", "tier": "structured"}
+{"id": 63, "claude_score": 32, "claude_pred": 0.32, "label": 0.197, "match_type": "hard_negative", "tier": "structured"}
+{"id": 89, "claude_score": 22, "claude_pred": 0.22, "label": 0.845, "match_type": "strong", "tier": "structured"}
+{"id": 17, "claude_score": 28, "claude_pred": 0.28, "label": 0.836, "match_type": "strong", "tier": "structured"}
+{"id": 11, "claude_score": 18, "claude_pred": 0.18, "label": 0.307, "match_type": "hard_negative", "tier": "structured"}
+{"id": 80, "claude_score": 8, "claude_pred": 0.08, "label": 0.144, "match_type": "weak", "tier": "structured"}
+{"id": 31, "claude_score": 8, "claude_pred": 0.08, "label": 0.244, "match_type": "hard_negative", "tier": "structured"}
+{"id": 145, "claude_score": 42, "claude_pred": 0.42, "label": 0.885, "match_type": "strong", "tier": "structured"}
+{"id": 162, "claude_score": 12, "claude_pred": 0.12, "label": 0.686, "match_type": "good", "tier": "structured"}
+{"id": 82, "claude_score": 24, "claude_pred": 0.24, "label": 0.743, "match_type": "good", "tier": "structured"}
+{"id": 47, "claude_score": 12, "claude_pred": 0.12, "label": 0.27, "match_type": "hard_negative", "tier": "structured"}
+{"id": 170, "claude_score": 12, "claude_pred": 0.12, "label": 0.606, "match_type": "good", "tier": "structured"}
+{"id": 106, "claude_score": 32, "claude_pred": 0.32, "label": 0.621, "match_type": "good", "tier": "structured"}
+{"id": 207, "claude_score": 32, "claude_pred": 0.32, "label": 0.186, "match_type": "hard_negative", "tier": "structured"}
+{"id": 187, "claude_score": 28, "claude_pred": 0.28, "label": 0.203, "match_type": "hard_negative", "tier": "structured"}
+{"id": 26, "claude_score": 31, "claude_pred": 0.31, "label": 0.738, "match_type": "good", "tier": "structured"}
+{"id": 58, "claude_score": 28, "claude_pred": 0.28, "label": 0.768, "match_type": "good", "tier": "structured"}
+{"id": 112, "claude_score": 4, "claude_pred": 0.04, "label": 0.119, "match_type": "weak", "tier": "structured"}
+{"id": 25, "claude_score": 42, "claude_pred": 0.42, "label": 0.82, "match_type": "strong", "tier": "structured"}
+{"id": 108, "claude_score": 18, "claude_pred": 0.18, "label": 0.178, "match_type": "weak", "tier": "structured"}
+{"id": 52, "claude_score": 8, "claude_pred": 0.08, "label": 0.179, "match_type": "weak", "tier": "structured"}
+{"id": 155, "claude_score": 8, "claude_pred": 0.08, "label": 0.318, "match_type": "hard_negative", "tier": "structured"}
+{"id": 111, "claude_score": 8, "claude_pred": 0.08, "label": 0.293, "match_type": "hard_negative", "tier": "structured"}
+{"id": 156, "claude_score": 5, "claude_pred": 0.05, "label": 0.066, "match_type": "weak", "tier": "structured"}
+{"id": 33, "claude_score": 42, "claude_pred": 0.42, "label": 0.854, "match_type": "strong", "tier": "structured"}
+{"id": 6, "claude_score": 38, "claude_pred": 0.38, "label": 0.479, "match_type": "partial", "tier": "structured"}
+{"id": 210, "claude_score": 29, "claude_pred": 0.29, "label": 0.62, "match_type": "good", "tier": "structured"}
+{"id": 153, "claude_score": 32, "claude_pred": 0.32, "label": 0.941, "match_type": "strong", "tier": "structured"}
+{"id": 167, "claude_score": 12, "claude_pred": 0.12, "label": 0.241, "match_type": "hard_negative", "tier": "structured"}
+{"id": 208, "claude_score": 8, "claude_pred": 0.08, "label": 0.192, "match_type": "weak", "tier": "structured"}
+{"id": 99, "claude_score": 8, "claude_pred": 0.08, "label": 0.334, "match_type": "hard_negative", "tier": "structured"}
+{"id": 90, "claude_score": 22, "claude_pred": 0.22, "label": 0.73, "match_type": "good", "tier": "structured"}
+{"id": 150, "claude_score": 32, "claude_pred": 0.32, "label": 0.568, "match_type": "partial", "tier": "structured"}
+{"id": 24, "claude_score": 8, "claude_pred": 0.08, "label": 0.2, "match_type": "weak", "tier": "structured"}
+{"id": 103, "claude_score": 18, "claude_pred": 0.18, "label": 0.325, "match_type": "hard_negative", "tier": "structured"}
+{"id": 190, "claude_score": 39, "claude_pred": 0.39, "label": 0.452, "match_type": "partial", "tier": "structured"}
+{"id": 165, "claude_score": 12, "claude_pred": 0.12, "label": 0.871, "match_type": "strong", "tier": "structured"}
+{"id": 160, "claude_score": 8, "claude_pred": 0.08, "label": 0.128, "match_type": "weak", "tier": "structured"}
+{"id": 76, "claude_score": 8, "claude_pred": 0.08, "label": 0.07, "match_type": "weak", "tier": "structured"}
+{"id": 161, "claude_score": 22, "claude_pred": 0.22, "label": 0.82, "match_type": "strong", "tier": "structured"}
+{"id": 169, "claude_score": 18, "claude_pred": 0.18, "label": 0.822, "match_type": "strong", "tier": "structured"}
+{"id": 201, "claude_score": 55, "claude_pred": 0.55, "label": 0.929, "match_type": "strong", "tier": "structured"}
+{"id": 55, "claude_score": 12, "claude_pred": 0.12, "label": 0.267, "match_type": "hard_negative", "tier": "structured"}
+{"id": 93, "claude_score": 22, "claude_pred": 0.22, "label": 0.904, "match_type": "strong", "tier": "structured"}
+{"id": 147, "claude_score": 8, "claude_pred": 0.08, "label": 0.284, "match_type": "hard_negative", "tier": "structured"}
+{"id": 27, "claude_score": 25, "claude_pred": 0.25, "label": 0.17, "match_type": "hard_negative", "tier": "structured"}
+{"id": 105, "claude_score": 38, "claude_pred": 0.38, "label": 0.834, "match_type": "strong", "tier": "structured"}
+{"id": 53, "claude_score": 38, "claude_pred": 0.38, "label": 0.808, "match_type": "strong", "tier": "structured"}
+{"id": 166, "claude_score": 12, "claude_pred": 0.12, "label": 0.553, "match_type": "partial", "tier": "structured"}
+{"id": 36, "claude_score": 5, "claude_pred": 0.05, "label": 0.136, "match_type": "weak", "tier": "structured"}
+{"id": 171, "claude_score": 18, "claude_pred": 0.18, "label": 0.349, "match_type": "hard_negative", "tier": "structured"}
+{"id": 59, "claude_score": 15, "claude_pred": 0.15, "label": 0.272, "match_type": "hard_negative", "tier": "structured"}
+{"id": 202, "claude_score": 39, "claude_pred": 0.39, "label": 0.72, "match_type": "good", "tier": "structured"}
+{"id": 70, "claude_score": 35, "claude_pred": 0.35, "label": 0.414, "match_type": "partial", "tier": "structured"}
+{"id": 176, "claude_score": 12, "claude_pred": 0.12, "label": 0.128, "match_type": "weak", "tier": "structured"}
+{"id": 158, "claude_score": 12, "claude_pred": 0.12, "label": 0.524, "match_type": "partial", "tier": "structured"}
+{"id": 179, "claude_score": 18, "claude_pred": 0.18, "label": 0.215, "match_type": "hard_negative", "tier": "structured"}
+{"id": 118, "claude_score": 28, "claude_pred": 0.28, "label": 0.367, "match_type": "partial", "tier": "structured"}
+{"id": 120, "claude_score": 24, "claude_pred": 0.24, "label": 0.132, "match_type": "weak", "tier": "structured"}
+{"id": 175, "claude_score": 18, "claude_pred": 0.18, "label": 0.303, "match_type": "hard_negative", "tier": "structured"}
+{"id": 10, "claude_score": 36, "claude_pred": 0.36, "label": 0.621, "match_type": "good", "tier": "structured"}
+{"id": 199, "claude_score": 18, "claude_pred": 0.18, "label": 0.156, "match_type": "hard_negative", "tier": "structured"}
+{"id": 206, "claude_score": 34, "claude_pred": 0.34, "label": 0.455, "match_type": "partial", "tier": "structured"}
+{"id": 1, "claude_score": 68, "claude_pred": 0.68, "label": 0.921, "match_type": "strong", "tier": "structured"}
+{"id": 209, "claude_score": 38, "claude_pred": 0.38, "label": 0.933, "match_type": "strong", "tier": "structured"}
+{"id": 196, "claude_score": 12, "claude_pred": 0.12, "label": 0.119, "match_type": "weak", "tier": "structured"}
+{"id": 85, "claude_score": 59, "claude_pred": 0.59, "label": 0.907, "match_type": "strong", "tier": "structured"}
+{"id": 71, "claude_score": 12, "claude_pred": 0.12, "label": 0.264, "match_type": "hard_negative", "tier": "structured"}
+{"id": 200, "claude_score": 8, "claude_pred": 0.08, "label": 0.083, "match_type": "weak", "tier": "structured"}
+{"id": 79, "claude_score": 8, "claude_pred": 0.08, "label": 0.276, "match_type": "hard_negative", "tier": "structured"}
+{"id": 44, "claude_score": 18, "claude_pred": 0.18, "label": 0.098, "match_type": "weak", "tier": "structured"}
+{"id": 212, "claude_score": 12, "claude_pred": 0.12, "label": 0.185, "match_type": "weak", "tier": "structured"}
+{"id": 15, "claude_score": 25, "claude_pred": 0.25, "label": 0.289, "match_type": "hard_negative", "tier": "structured"}

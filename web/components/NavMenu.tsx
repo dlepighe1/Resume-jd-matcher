@@ -9,14 +9,6 @@ export function NavMenu() {
     <nav className="flex items-center gap-6 text-sm">
       {NAV_ITEMS.map((item) => {
         const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
-        if (item.comingSoon) {
-          return (
-            <span key={item.href} className="flex items-center gap-1.5 text-slate-500">
-              {item.label}
-              <span className="rounded-md bg-slate-200 px-1.5 py-0.5 text-[10px] uppercase text-slate-500 dark:bg-slate-800 dark:text-slate-400">soon</span>
-            </span>
-          );
-        }
         return (
           <Link
             key={item.href}

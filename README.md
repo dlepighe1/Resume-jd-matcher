@@ -6,15 +6,18 @@ has never seen.
 
 **Final model:** `all-mpnet-base-v2` fine-tuned with a combined ranking + calibration loss,
 plus Platt score calibration — **Spearman 0.86, MAE 0.10 on 106 fully held-out pairs
-from unseen job postings**, with 13 of 14 industries under 0.15 MAE. Platt is the
-production calibrator (a 2-parameter sigmoid can't overfit a 106-pair calibration set);
-isotonic regression scores identically within bootstrap noise.
+from unseen job postings** (13 of 14 industries under 0.15 MAE) — **outscoring Claude
+Opus 4.5's 0.71 / 0.16 on the same benchmark**, at 109M params and zero per-query API
+cost. Platt is the production calibrator (a 2-parameter sigmoid can't overfit a 106-pair
+calibration set); isotonic regression scores identically within bootstrap noise.
 
 **The app is a three-engine comparison harness.** The same resume/JD pair is scored by the
 fine-tuned model, by Claude, and by a free open-weights model, side by side — because the
 interesting question isn't "what does an LLM say", it's *whether a small purpose-built model
-beats a general one, and how you'd know*. Only one of the three has an external-validation
-number behind it, and the UI says which.
+beats a general one, and how you'd know*. It does: benchmarked head-to-head on the same 106
+held-out pairs, the fine-tuned model beats Claude Opus 4.5 on both ranking and calibrated
+error ([see below](#fine-tuned-model-vs-claude-a-frontier-llm)) — and the UI is explicit
+about which engine has an external-validation number behind it.
 
 | | |
 |---|---|
@@ -89,6 +92,25 @@ comparison proving the Platt/isotonic tie, and a recruiter-facing top-candidate
 ranking metric — plus HF Hub publishing so the live demo serves the real model.
 
 ![Production model comparison](Results/05_production_v2_fig1.png)
+
+### Fine-tuned model vs Claude (a frontier LLM)
+
+Does a small in-domain model actually beat a frontier LLM at this task? Claude Opus 4.5
+scored the **same 106 held-out pairs** through the production prompt (schema-constrained
+JSON, one call, zero-shot):
+
+| Engine (106-pair external final test) | Spearman ↑ | MAE ↓ |
+|---|---|---|
+| **MPNet + Platt calibration (production)** | **0.8645** | **0.1021** |
+| Claude Opus 4.5 — calibrated (isotonic) | 0.7084 | 0.1613 |
+| Claude Opus 4.5 — raw | 0.7117 | 0.2518 |
+
+Claude is a competent *ranker* but a poorly *calibrated* one — it compresses strong
+matches (a 0.9-label pair scores ~30/100). Fitting the same Platt/isotonic calibrator on
+the calibration half closes most of that absolute-error gap (0.25 → 0.16 MAE) but cannot
+change the ranking, so the purpose-built model still leads on both. (Matched single-call
+setup — no extended thinking — so this is a floor for Claude, not its ceiling.) Reproduce
+with `scripts/claude_benchmark.py` + `scripts/calibrate.py`.
 
 ---
 

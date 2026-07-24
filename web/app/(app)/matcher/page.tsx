@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useState } from "react";
@@ -52,7 +52,7 @@ export default function MatcherPage() {
       }
 
       setResult(data.result);
-      setAnalysisId(data.id); // null when Supabase isn't configured — sharing stays hidden
+      setAnalysisId(data.id); // null when Supabase isn't configured â€” sharing stays hidden
     } catch {
       setFailure({
         code: "NETWORK",
@@ -95,8 +95,8 @@ export default function MatcherPage() {
 
       setResumeText(data.text);
       // Never silent. A two-column resume can extract as interleaved nonsense, and the
-      // user is the only one who can tell — so the text goes in the box for them to check.
-      setExtractNote(`Extracted ${data.words} words — check it reads correctly before analyzing.`);
+      // user is the only one who can tell â€” so the text goes in the box for them to check.
+      setExtractNote(`Extracted ${data.words} words â€” check it reads correctly before analyzing.`);
     } catch {
       setExtractError("Could not read that file.");
     } finally {
@@ -115,9 +115,9 @@ export default function MatcherPage() {
 
   return (
     <>
-      <header className="mb-10">
+      <header className="mb-10 border-b border-slate-800 pb-8"><div className="mb-5 flex items-center justify-between"><span className="page-kicker">PRECISION MATCH ENGINE</span><Link href="/dashboard" className="font-mono text-xs text-[var(--color-brand)] hover:underline">Back to overview</Link></div>
         <h1 className="font-mono text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl dark:text-slate-50">
-          Resume ↔ Job Match Analyzer
+          Resume â†” Job Match Analyzer
         </h1>
         <p className="mt-2 max-w-2xl leading-relaxed text-slate-600 dark:text-slate-400">
           Score how well a resume fits a job description and see exactly which requirements it
@@ -125,13 +125,13 @@ export default function MatcherPage() {
           <span className="font-mono text-slate-800 dark:text-slate-200">
             106 held-out pairs from unseen postings
           </span>{" "}
-          — or compare it against a general-purpose LLM on the same pair.
+          â€” or compare it against a general-purpose LLM on the same pair.
         </p>
         <Link
           href="/compare"
           className="mt-3 inline-block font-mono text-sm text-[var(--color-brand)] underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
         >
-          Run all three engines side by side →
+          Run all three engines side by side â†’
         </Link>
       </header>
 
@@ -177,7 +177,7 @@ export default function MatcherPage() {
                   }}
                   className="sr-only"
                 />
-                {isExtracting ? "Reading PDF…" : "Upload PDF"}
+                {isExtracting ? "Reading PDFâ€¦" : "Upload PDF"}
               </label>
 
               {/* Extraction is never silent: a two-column layout can produce interleaved
@@ -205,7 +205,7 @@ export default function MatcherPage() {
               {isAnalyzing ? (
                 <>
                   <SpinnerIcon className="h-4 w-4 animate-spin" />
-                  Analyzing…
+                  Analyzingâ€¦
                 </>
               ) : (
                 <>
@@ -268,7 +268,7 @@ export default function MatcherPage() {
                         disabled={isSharing}
                         className="min-h-11 cursor-pointer rounded-lg border border-slate-300 px-4 font-mono text-sm text-slate-700 transition-colors duration-200 hover:border-slate-400 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:text-slate-100"
                       >
-                        {isSharing ? "Creating link…" : "Share"}
+                        {isSharing ? "Creating linkâ€¦" : "Share"}
                       </button>
                     </div>
                   )}
@@ -338,7 +338,7 @@ function TextAreaField({
         rows={10}
         aria-describedby={`${id}-hint`}
         className="w-full resize-y rounded-lg border border-slate-300 bg-white p-3 text-sm leading-relaxed text-slate-800 transition-colors duration-200 placeholder:text-slate-400 focus-visible:border-[var(--color-brand)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand)] disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:placeholder:text-slate-600"
-        placeholder={`Paste the ${label.toLowerCase()} here…`}
+        placeholder={`Paste the ${label.toLowerCase()} hereâ€¦`}
       />
 
       <p id={`${id}-hint`} className="mt-1 text-xs text-slate-500 dark:text-slate-400">

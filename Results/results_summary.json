@@ -43,6 +43,15 @@
     "calibrator_choice_note": "Platt and isotonic are statistically tied on the 106-pair test (delta MAE ~0.002, inside bootstrap noise and run-to-run training variance). Platt ships: a 2-parameter sigmoid cannot overfit a 106-pair calibration split, while isotonic's step function fits the calibration set tighter than it generalizes.",
     "batch_ranking_speed": "106 resumes ranked in ~1.1 s (T4 GPU)"
   },
+  "claude_opus_4_5_external_final_test_106_pairs": {
+    "model": "us.anthropic.claude-opus-4-5-20251101-v1:0 (Amazon Bedrock)",
+    "setup": "Same 106-pair external final test (stratified split, seed 42) as the fine-tuned model. Scored with the production system+user prompt and schema-constrained JSON output. One call per pair, zero-shot, no extended thinking/effort (this Bedrock model rejects them) — a matched floor, not Claude's ceiling.",
+    "raw": {"spearman": 0.7117, "mae": 0.2518},
+    "linear_platt_calibrated": {"spearman": 0.7117, "mae": 0.1664},
+    "isotonic_calibrated": {"spearman": 0.7084, "mae": 0.1613},
+    "finetuned_mpnet": {"spearman": 0.8645, "mae": 0.1021},
+    "takeaway": "Calibrator fit on the 106 calibration pairs and applied to the untouched test pairs — same protocol as the fine-tuned model. Calibration is monotonic, so Spearman is ~unchanged while MAE drops from 0.25 to 0.16: most of Claude's absolute-error gap was calibration, not judgment. The fine-tuned model still leads on both ranking (0.865 vs 0.71) and calibrated error (0.102 vs 0.16). Reproduce: scripts/claude_benchmark.py + scripts/calibrate.py."
+  },
   "charts": {
     "Results/03_final_study_external_eval_fig1.png": "Architecture comparison — internal test (Spearman / MAE / speed + scatter plots)",
     "Results/04_overfitting_fixes_fig1.png": "Overfitting fixes compared on the 212-pair external test",

@@ -1,0 +1,21 @@
+{
+  "model": "us.anthropic.claude-opus-4-5-20251101-v1:0 (Bedrock)",
+  "test_pairs": 106,
+  "claude_raw": {
+    "spearman": 0.7117,
+    "mae": 0.2518
+  },
+  "claude_linear_calibrated": {
+    "spearman": 0.7117,
+    "mae": 0.1664
+  },
+  "claude_isotonic_calibrated": {
+    "spearman": 0.7084,
+    "mae": 0.1613
+  },
+  "finetuned_mpnet": {
+    "spearman": 0.8645,
+    "mae": 0.1021
+  },
+  "note": "Calibrator fit on the 106 calibration pairs, applied to the 106 held-out test pairs \u2014 same protocol as the fine-tuned model. Monotonic, so Spearman is unchanged; only MAE moves."
+}

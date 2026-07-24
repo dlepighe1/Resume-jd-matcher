@@ -1,0 +1,15 @@
+{
+  "model": "us.anthropic.claude-opus-4-5-20251101-v1:0",
+  "effort": "medium",
+  "n_scored": 106,
+  "n_errored": 0,
+  "claude": {
+    "spearman": 0.7117,
+    "mae": 0.2518
+  },
+  "finetuned_mpnet": {
+    "spearman": 0.8645,
+    "mae": 0.1021
+  },
+  "note": "Same 106-pair external final test (stratified split, seed 42) used for the fine-tuned model. Claude read the raw JD as the product does."
+}
