@@ -1,61 +1,324 @@
 {
   "project": "ResumeAI — Resume / Job-Description Matching",
-  "timeline": "2026-04-28 to 2026-05-05",
-  "source_of_truth": "Executed notebook outputs (Notebooks/03, 04, 05)",
+  "timeline": "2026-04-28 to 2026-05-05 (studies 01-04), 2026-07 (production run)",
+  "source_of_truth": "Executed notebook outputs. Every number below is transcribed from a cell output in Notebooks/, never from memory.",
+  "_note_counts_verified": "Unique-JD counts were measured directly from the CSVs on 2026-07-27. Earlier versions of this file reported 200 and 305; the true values are 150 and 255. See docs/DATA_CARD.md.",
   "data": {
-    "training_v1": {"pairs": 500, "unique_jds": 200, "source": "curated from 1,148 scraped LinkedIn postings"},
-    "training_v2": {"pairs": 815, "unique_jds": 305},
-    "external_test": {"pairs": 212, "unique_jds": 53, "split": "106 calibration / 106 final test (stratified, seed 42)"},
-    "match_types": ["strong", "good", "partial", "hard_negative", "weak"],
-    "industries": 14
+    "training_v1": {
+      "file": "Data/resume_jd_training_500.csv",
+      "pairs": 500,
+      "unique_jds": 150,
+      "used_by": [
+        "Notebooks/01",
+        "Notebooks/02",
+        "Notebooks/03",
+        "Notebooks/04"
+      ]
+    },
+    "training_v2": {
+      "file": "Data/resume_jd_training_800.csv",
+      "pairs": 815,
+      "unique_jds": 255,
+      "composition": "strict superset of training_v1: 500 'original' rows (150 JDs) + 315 'expansion' rows (105 new JDs)",
+      "used_by": [
+        "Notebooks/05"
+      ]
+    },
+    "external_test": {
+      "file": "Data/external_test_200_pairs.csv",
+      "pairs": 212,
+      "unique_jds": 53,
+      "candidates_per_jd": 4,
+      "jd_overlap_with_training": 0,
+      "split": "106 calibration / 106 final test (stratified, seed 42)"
+    },
+    "match_types": [
+      "strong",
+      "good",
+      "partial",
+      "hard_negative",
+      "weak"
+    ],
+    "industries": 14,
+    "labels": "synthetic, rubric-derived — see docs/DATA_CARD.md"
   },
-  "final_study_internal_test_50_pairs": {
-    "MPNet (fine-tuned)": {"spearman": 0.8516, "mae": 0.2304},
-    "MPNet + isotonic calibration": {"spearman": 0.8372, "mae": 0.1199},
-    "RoBERTa cross-encoder (fine-tuned)": {"spearman": 0.8917, "mae": 0.0890},
-    "MiniLM-L12 cross-encoder (fine-tuned)": {"spearman": 0.2421, "mae": 0.3053},
-    "DeBERTa-v3 cross-encoder (fine-tuned)": {"spearman": null, "mae": 0.4677, "note": "Spearman NaN — near-constant predictions"}
+  "notebook_01_baselines_internal_test_50_pairs": {
+    "_scope": "500-pair training set; internal test drawn from the same 150 postings as training. Diagnostic only.",
+    "MiniLM": {
+      "base_spearman": 0.4227,
+      "ft_spearman": 0.4005,
+      "base_mae": 0.2026,
+      "ft_mae": 0.3122
+    },
+    "MPNet": {
+      "base_spearman": 0.3682,
+      "ft_spearman": 0.8444,
+      "base_mae": 0.2077,
+      "ft_mae": 0.2548
+    },
+    "BGE": {
+      "base_spearman": 0.466,
+      "ft_spearman": 0.5256,
+      "base_mae": 0.2411,
+      "ft_mae": 0.3149
+    },
+    "finding": "Fine-tuning roughly doubled MPNet's ranking quality and made every model's MAE worse — the calibration gap, which notebook 02 investigates."
   },
-  "final_study_external_test_212_pairs": {
-    "MPNet + isotonic calibration": {"spearman": 0.7614, "mae": 0.1446},
-    "RoBERTa cross-encoder / hybrid": {"spearman": -0.6122, "mae": 0.3988, "note": "catastrophic overfitting: 0.89 internal -> -0.61 external"}
+  "notebook_02_architecture_internal_test_50_pairs": {
+    "_scope": "500-pair training set, internal test. See the caveat cell in the notebook: training is unseeded and this run drew an unlucky MPNet.",
+    "MPNet (fine-tuned)": {
+      "spearman": 0.5691,
+      "mae": 0.2628
+    },
+    "MPNet + isotonic": {
+      "spearman": 0.5504,
+      "mae": 0.1665
+    },
+    "E5-base-v2 (fine-tuned)": {
+      "spearman": 0.6825,
+      "mae": 0.2555
+    },
+    "E5-base-v2 + isotonic": {
+      "spearman": 0.6871,
+      "mae": 0.1575
+    },
+    "RoBERTa cross-encoder": {
+      "spearman": 0.9373,
+      "mae": 0.0766
+    },
+    "seed_variance_warning": "MPNet fine-tuned scores 0.8444 in notebook 01 and 0.8516 in notebook 03 under an identical configuration. The ~0.28 Spearman spread is run-to-run training noise; these notebooks seed the split but not training. Notebook 05 uses 3 seeds with mean +/- std for this reason.",
+    "finding": "Isotonic calibration cut bi-encoder MAE by ~37-38% while leaving Spearman essentially unchanged. That result holds for both bi-encoders and does not depend on which model won."
   },
-  "overfitting_fixes_external_test_212_pairs": {
-    "MPNet + calibration (baseline)": {"spearman": 0.7693, "mae": 0.1657},
-    "RoBERTa CE (no fixes)": {"spearman": -0.3469, "mae": 0.3646},
-    "RoBERTa CE + 3x augmentation": {"spearman": 0.4483, "mae": 0.3581},
-    "DistilRoBERTa CE + augmentation + weight decay": {"spearman": 0.5103, "mae": 0.2742},
-    "K-fold ensemble (5x DistilRoBERTa)": {"spearman": 0.4113, "mae": 0.3037},
-    "conclusion": "No cross-encoder fix beat the calibrated bi-encoder at this data scale"
+  "notebook_03_external_validation": {
+    "_scope": "500-pair training set. The notebook that changed the project's direction.",
+    "internal_test_50_pairs": {
+      "MPNet (fine-tuned)": {
+        "spearman": 0.8516,
+        "mae": 0.2304
+      },
+      "MPNet + isotonic": {
+        "spearman": 0.8372,
+        "mae": 0.1199
+      },
+      "RoBERTa cross-encoder": {
+        "spearman": 0.8917,
+        "mae": 0.089
+      },
+      "MiniLM-L12 cross-encoder": {
+        "spearman": 0.2421,
+        "mae": 0.3053
+      },
+      "DeBERTa-v3 cross-encoder": {
+        "spearman": null,
+        "mae": 0.4677,
+        "note": "Spearman undefined — near-constant predictions; the classifier head never learned to discriminate"
+      }
+    },
+    "external_test_212_pairs": {
+      "MPNet + isotonic": {
+        "spearman": 0.7614,
+        "mae": 0.1446
+      },
+      "RoBERTa cross-encoder": {
+        "spearman": -0.6122,
+        "mae": 0.3988
+      },
+      "MiniLM-L12 cross-encoder": {
+        "spearman": 0.1867,
+        "mae": 0.4021
+      },
+      "DeBERTa-v3 cross-encoder": {
+        "spearman": null,
+        "mae": 0.5427
+      }
+    },
+    "headline_finding": "The RoBERTa cross-encoder won the internal test (0.8917 vs 0.8516) and inverted on unseen postings (-0.6122) — a 1.50 Spearman swing. 125M parameters on 400 examples is ~312k parameters per example; it memorized the training postings. The calibrated bi-encoder lost only 0.076 Spearman across the same transfer.",
+    "hybrid_note": "The 'Hybrid' rows in this notebook duplicate the cross-encoder rows exactly: at 1:1 scoring the hybrid delegates to the cross-encoder and inherits its failure completely."
   },
-  "production_v2_external_final_test_106_pairs": {
-    "MPNet raw (combined CoSENT+Cosine loss)": {"spearman": 0.8645, "mae": 0.1325},
-    "MPNet + Platt calibration": {"spearman": 0.8645, "mae": 0.1021},
-    "MPNet + isotonic calibration": {"spearman": 0.8667, "mae": 0.1005},
-    "RoBERTa CE (aug + reg)": {"spearman": 0.6514, "mae": 0.2209},
-    "DistilRoBERTa CE (aug + reg)": {"spearman": 0.8379, "mae": 0.1816},
-    "industries_below_0.15_mae": "13 of 14 (Marketing/Growth at 0.158)"
+  "notebook_04_overfitting_fixes_external_test_212_pairs": {
+    "_scope": "500-pair training set. Four anti-overfitting fixes ablated, evaluated externally only.",
+    "MPNet + calibration (baseline)": {
+      "spearman": 0.7693,
+      "mae": 0.1657
+    },
+    "RoBERTa CE (no fixes)": {
+      "spearman": -0.3469,
+      "mae": 0.3646
+    },
+    "RoBERTa CE + 3x augmentation": {
+      "spearman": 0.4483,
+      "mae": 0.3581
+    },
+    "DistilRoBERTa CE + augmentation + weight decay": {
+      "spearman": 0.5103,
+      "mae": 0.2742
+    },
+    "K-fold ensemble (5x DistilRoBERTa)": {
+      "spearman": 0.4113,
+      "mae": 0.3037
+    },
+    "conclusion": "Every fix helped (-0.35 -> +0.51 external Spearman) and none beat the simple calibrated bi-encoder at 0.77. At this data scale, cross-encoder capacity is a liability."
   },
-  "production_model": {
-    "name": "all-mpnet-base-v2 fine-tuned with combined CoSENT + CosineSimilarity loss, + Platt calibration fitted on external calibration split",
-    "spearman": 0.8645,
-    "mae": 0.1021,
-    "calibrator_choice_note": "Platt and isotonic are statistically tied on the 106-pair test (delta MAE ~0.002, inside bootstrap noise and run-to-run training variance). Platt ships: a 2-parameter sigmoid cannot overfit a 106-pair calibration split, while isotonic's step function fits the calibration set tighter than it generalizes.",
-    "batch_ranking_speed": "106 resumes ranked in ~1.1 s (T4 GPU)"
+  "notebook_05_production": {
+    "_status": "VALID. Re-run 2026-07-29 with the save_best_model fix; every number below describes models/seed43, the checkpoint that was saved.",
+    "_fix": "SentenceTransformer.fit() defaults to save_best_model=True, so output_path holds the best-by-validation checkpoint while the in-memory model is the final epoch. The first run calibrated and measured the in-memory model and published the directory — different weights, mismatched calibrator, and a silently wrong audit. Notebook 05 and src/train.py now reload from output_path before calibrating, so the calibrator, the metrics and the artifact are the same object.",
+    "run": "3 seeds (42/43/44), 815 pairs / 255 postings, combined CoSENT + CosineSimilarity loss, 22 min/seed on a T4",
+    "baseline_base_mpnet": {
+      "spearman": 0.6246,
+      "mae": 0.2138,
+      "spearman_ci95": [
+        0.504,
+        0.7233
+      ],
+      "mae_ci95": [
+        0.1925,
+        0.2355
+      ]
+    },
+    "per_seed_platt": {
+      "42": {
+        "spearman": 0.8538,
+        "mae": 0.1051
+      },
+      "43": {
+        "spearman": 0.834,
+        "mae": 0.1163
+      },
+      "44": {
+        "spearman": 0.8186,
+        "mae": 0.1221
+      }
+    },
+    "aggregate": {
+      "raw": {
+        "spearman_mean": 0.8355,
+        "spearman_std": 0.0144,
+        "mae_mean": 0.1528,
+        "mae_std": 0.0042
+      },
+      "platt": {
+        "spearman_mean": 0.8355,
+        "spearman_std": 0.0144,
+        "mae_mean": 0.1145,
+        "mae_std": 0.0071
+      },
+      "isotonic": {
+        "spearman_mean": 0.8337,
+        "spearman_std": 0.0186,
+        "mae_mean": 0.1093,
+        "mae_std": 0.0082
+      }
+    },
+    "production_seed": 43,
+    "production_MPNet_plus_platt": {
+      "raw": {
+        "spearman": 0.834,
+        "mae": 0.1561
+      },
+      "platt": {
+        "spearman": 0.834,
+        "mae": 0.1163
+      },
+      "isotonic": {
+        "spearman": 0.8343,
+        "mae": 0.1077
+      },
+      "spearman_ci95": [
+        0.7642,
+        0.8764
+      ],
+      "mae_ci95": [
+        0.0983,
+        0.1351
+      ]
+    },
+    "fine_tuning_delta": {
+      "spearman": 0.2109,
+      "mae": -0.0993,
+      "note": "vs base all-mpnet-base-v2 on the identical 106 held-out pairs"
+    },
+    "cross_encoder_distilroberta": {
+      "spearman": 0.7586,
+      "mae": 0.1939,
+      "spearman_ci95": [
+        0.6637,
+        0.8233
+      ],
+      "mae_ci95": [
+        0.1661,
+        0.2236
+      ]
+    },
+    "calibrator_bootstrap": {
+      "mae_diff_point": 0.0086,
+      "ci95": [
+        -0.0005,
+        0.0177
+      ],
+      "p_platt_better": 0.034,
+      "verdict": "tied"
+    },
+    "precision_at_1": {
+      "groups": 53,
+      "hits": 50,
+      "precision_at_1": 0.9434,
+      "mean_shortfall_when_wrong": 0.1517,
+      "random_baseline": 0.25,
+      "note": "53 unseen postings, 4 candidates each; ranking is calibration-invariant so raw cosine is used"
+    },
+    "_seed_spread": "0.8186-0.8538 Spearman across three seeds of an identical recipe. Reported as mean +/- std because notebook 02 showed a single run of this pipeline swings ~0.28 at this data scale.",
+    "_not_yet_published": "The publish cell has not been executed, so the Hub still serves a 2026-07-27 checkpoint. Until it runs, notebook 06 audits the wrong weights and scripts/build_demo_data.py refuses to bundle the fine-tuned engine."
   },
   "claude_opus_4_5_external_final_test_106_pairs": {
     "model": "us.anthropic.claude-opus-4-5-20251101-v1:0 (Amazon Bedrock)",
-    "setup": "Same 106-pair external final test (stratified split, seed 42) as the fine-tuned model. Scored with the production system+user prompt and schema-constrained JSON output. One call per pair, zero-shot, no extended thinking/effort (this Bedrock model rejects them) — a matched floor, not Claude's ceiling.",
-    "raw": {"spearman": 0.7117, "mae": 0.2518},
-    "linear_platt_calibrated": {"spearman": 0.7117, "mae": 0.1664},
-    "isotonic_calibrated": {"spearman": 0.7084, "mae": 0.1613},
-    "finetuned_mpnet": {"spearman": 0.8645, "mae": 0.1021},
-    "takeaway": "Calibrator fit on the 106 calibration pairs and applied to the untouched test pairs — same protocol as the fine-tuned model. Calibration is monotonic, so Spearman is ~unchanged while MAE drops from 0.25 to 0.16: most of Claude's absolute-error gap was calibration, not judgment. The fine-tuned model still leads on both ranking (0.865 vs 0.71) and calibrated error (0.102 vs 0.16). Reproduce: scripts/claude_benchmark.py + scripts/calibrate.py."
+    "setup": "Same 106-pair external final test as the fine-tuned model. Production system+user prompt, schema-constrained JSON, one call per pair, zero-shot, no extended thinking (this Bedrock model rejects it) — a matched floor, not Claude's ceiling.",
+    "raw": {
+      "spearman": 0.7117,
+      "mae": 0.2518
+    },
+    "linear_platt_calibrated": {
+      "spearman": 0.7117,
+      "mae": 0.1664
+    },
+    "isotonic_calibrated": {
+      "spearman": 0.7084,
+      "mae": 0.1613
+    },
+    "takeaway": "Calibration is monotonic, so Spearman is unchanged while MAE drops from 0.25 to 0.16 — most of Claude's absolute-error gap was calibration, not judgment. Reproduce: scripts/claude_benchmark.py + scripts/calibrate.py.",
+    "_comparison_note": "Compare against the fine-tuned model's numbers in notebook_05_production above, on the identical 106 pairs."
+  },
+  "audit": {
+    "_status": "QUARANTINED — audited the stale Hub checkpoint, not models/seed43.",
+    "_evidence": "The audit measured raw Spearman 0.7891 (cosine range [0.569, 0.890]) — bit-identical across two audit runs while notebook 05's model changed from 0.8173 to 0.8340. The HF repo's lastModified is 2026-07-27, predating both production runs, and platt_calibrator.pkl 404s there. The audit paired a fresh local calibrator with stale Hub weights: the worst possible combination.",
+    "_valid_regardless": {
+      "base_mpnet": {
+        "spearman": 0.6246,
+        "mae": 0.2138
+      },
+      "tfidf": {
+        "spearman": 0.5657,
+        "mae": null,
+        "note": "MAE omitted: TF-IDF cosine is not an estimate of the 0-1 label; only ranking is comparable"
+      },
+      "jaccard": {
+        "spearman": 0.5592,
+        "mae": null
+      },
+      "_why": "None of these depend on the published fine-tuned model."
+    },
+    "_withheld_until_rerun": [
+      "name_bias",
+      "preprocessing_ablation",
+      "calibration_ece",
+      "by_match_type",
+      "hard_negative_subtypes"
+    ],
+    "_guards": "Notebook 06 aborts on a >0.01 raw-Spearman disagreement with production_results.json; notebook 05's export cell now re-downloads the Hub model and reports whether the publish actually happened; scripts/build_demo_data.py refuses mismatched predictions (it rejected this run's)."
   },
   "charts": {
-    "Results/03_final_study_external_eval_fig1.png": "Architecture comparison — internal test (Spearman / MAE / speed + scatter plots)",
-    "Results/04_overfitting_fixes_fig1.png": "Overfitting fixes compared on the 212-pair external test",
-    "Results/05_production_v2_fig1.png": "Production v2 models on the 106-pair external final test",
-    "Results/production_model_comparison_2026-07-07.png": "Production v2 rerun (2026-07-07, Colab) — calibrator ordering flipped vs first run, confirming the Platt/isotonic statistical tie"
+    "Results/03_external_validation_fig1.png": "Architecture comparison on the internal test (Spearman, MAE, speed, scatter)",
+    "Results/04_overfitting_fixes_fig1.png": "Four anti-overfitting fixes on the 212-pair external test",
+    "Results/05_production_v2_fig1_LEGACY.png": "Superseded. From the pre-multi-seed production run; kept for provenance only",
+    "Results/production_model_comparison_2026-07-07.png": "Superseded. Early rerun that first showed the calibrator ordering flipping between runs"
   }
 }

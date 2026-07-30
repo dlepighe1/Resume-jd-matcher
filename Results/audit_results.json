@@ -1,0 +1,129 @@
+{
+  "tfidf": {
+    "spearman": 0.5656,
+    "mae": 0.4096
+  },
+  "jaccard": {
+    "spearman": 0.5593,
+    "mae": 0.4139
+  },
+  "base_mpnet": {
+    "spearman": 0.6246,
+    "mae": 0.2138
+  },
+  "production": {
+    "spearman": 0.7891,
+    "mae": 0.2876
+  },
+  "name_bias": {
+    "groups": {
+      "white_m": {
+        "mean_score": 0.7356,
+        "delta_vs_overall": 0.0001,
+        "max_abs_shift": 0.0286
+      },
+      "white_f": {
+        "mean_score": 0.7363,
+        "delta_vs_overall": 0.0008,
+        "max_abs_shift": 0.0299
+      },
+      "black_m": {
+        "mean_score": 0.7343,
+        "delta_vs_overall": -0.0012,
+        "max_abs_shift": 0.028
+      },
+      "black_f": {
+        "mean_score": 0.7402,
+        "delta_vs_overall": 0.0047,
+        "max_abs_shift": 0.0286
+      },
+      "hispanic": {
+        "mean_score": 0.7326,
+        "delta_vs_overall": -0.003,
+        "max_abs_shift": 0.0353
+      },
+      "asian": {
+        "mean_score": 0.734,
+        "delta_vs_overall": -0.0015,
+        "max_abs_shift": 0.0289
+      }
+    },
+    "group_mean_spread": 0.0076,
+    "mean_per_pair_sd": 0.0052,
+    "verdict_flips": 21,
+    "n_pairs": 106,
+    "largest_gap": {
+      "high": "black_f",
+      "low": "hispanic",
+      "wilcoxon_p": 0.0
+    }
+  },
+  "preprocessing": {
+    "raw_jd": {
+      "spearman": 0.7877,
+      "mae": 0.2855
+    },
+    "naive_truncate": {
+      "spearman": 0.7877,
+      "mae": 0.2855
+    },
+    "smart_truncate": {
+      "spearman": 0.7891,
+      "mae": 0.2876
+    }
+  },
+  "calibration": {
+    "ece": 0.2713,
+    "pred_range": [
+      0.477,
+      0.878
+    ],
+    "true_range": [
+      0.054,
+      0.945
+    ]
+  },
+  "hard_negative_subtypes": {
+    "impressive_irrelevant": {
+      "mae": 0.398,
+      "n": 30
+    },
+    "keyword_overlap": {
+      "mae": 0.438,
+      "n": 22
+    },
+    "wrong_specialization": {
+      "mae": 0.4425,
+      "n": 19
+    }
+  },
+  "by_match_type": {
+    "strong": {
+      "mae": 0.0429,
+      "bias": -0.0235,
+      "n": 27
+    },
+    "good": {
+      "mae": 0.0949,
+      "bias": 0.0948,
+      "n": 14
+    },
+    "partial": {
+      "mae": 0.2804,
+      "bias": 0.2804,
+      "n": 13
+    },
+    "hard_negative": {
+      "mae": 0.3993,
+      "bias": 0.3993,
+      "n": 26
+    },
+    "weak": {
+      "mae": 0.5375,
+      "bias": 0.5375,
+      "n": 26
+    }
+  },
+  "model_id": "dlepighe1/resume-jd-matcher-mpnet",
+  "n_final_test": 106
+}

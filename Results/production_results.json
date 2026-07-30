@@ -1,0 +1,163 @@
+{
+  "config": {
+    "seeds": [
+      42,
+      43,
+      44
+    ],
+    "epochs": 4,
+    "batch_size": 16,
+    "ce_epochs": 3,
+    "ce_weight_decay": 0.01,
+    "n_augment": 3,
+    "max_jd_words": 350,
+    "split_seed": 42,
+    "val_fraction": 0.15,
+    "bootstrap_resamples": 2000,
+    "hf_repo": "dlepighe1/resume-jd-matcher-mpnet"
+  },
+  "data": {
+    "training_pairs": 815,
+    "training_unique_jds": 255,
+    "external_pairs": 212,
+    "external_unique_jds": 53,
+    "jd_overlap_train_external": 0,
+    "calibration_pairs": 106,
+    "final_test_pairs": 106
+  },
+  "baseline_base_mpnet": {
+    "spearman": 0.6246,
+    "mae": 0.2138,
+    "spearman_ci95": [
+      0.504,
+      0.7233
+    ],
+    "mae_ci95": [
+      0.1925,
+      0.2355
+    ]
+  },
+  "per_seed": [
+    {
+      "seed": 42,
+      "train_minutes": 22.3,
+      "raw": {
+        "spearman": 0.8538,
+        "mae": 0.1469
+      },
+      "platt": {
+        "spearman": 0.8538,
+        "mae": 0.1051
+      },
+      "isotonic": {
+        "spearman": 0.8561,
+        "mae": 0.1002
+      },
+      "model_path": "models/seed42"
+    },
+    {
+      "seed": 43,
+      "train_minutes": 22.0,
+      "raw": {
+        "spearman": 0.834,
+        "mae": 0.1561
+      },
+      "platt": {
+        "spearman": 0.834,
+        "mae": 0.1163
+      },
+      "isotonic": {
+        "spearman": 0.8343,
+        "mae": 0.1077
+      },
+      "model_path": "models/seed43"
+    },
+    {
+      "seed": 44,
+      "train_minutes": 22.2,
+      "raw": {
+        "spearman": 0.8186,
+        "mae": 0.1554
+      },
+      "platt": {
+        "spearman": 0.8186,
+        "mae": 0.1221
+      },
+      "isotonic": {
+        "spearman": 0.8106,
+        "mae": 0.1201
+      },
+      "model_path": "models/seed44"
+    }
+  ],
+  "aggregate": {
+    "raw": {
+      "spearman_mean": 0.8355,
+      "spearman_std": 0.0144,
+      "mae_mean": 0.1528,
+      "mae_std": 0.0042
+    },
+    "platt": {
+      "spearman_mean": 0.8355,
+      "spearman_std": 0.0144,
+      "mae_mean": 0.1145,
+      "mae_std": 0.0071
+    },
+    "isotonic": {
+      "spearman_mean": 0.8337,
+      "spearman_std": 0.0186,
+      "mae_mean": 0.1093,
+      "mae_std": 0.0082
+    }
+  },
+  "production_seed": 43,
+  "production": {
+    "raw": {
+      "spearman": 0.834,
+      "mae": 0.1561
+    },
+    "platt": {
+      "spearman": 0.834,
+      "mae": 0.1163
+    },
+    "isotonic": {
+      "spearman": 0.8343,
+      "mae": 0.1077
+    },
+    "spearman_ci95": [
+      0.7642,
+      0.8764
+    ],
+    "mae_ci95": [
+      0.0983,
+      0.1351
+    ]
+  },
+  "cross_encoder_distilroberta": {
+    "spearman": 0.7586,
+    "mae": 0.1939,
+    "spearman_ci95": [
+      0.6637,
+      0.8233
+    ],
+    "mae_ci95": [
+      0.1661,
+      0.2236
+    ]
+  },
+  "calibrator_bootstrap": {
+    "mae_diff_point": 0.0086,
+    "ci95": [
+      -0.0005,
+      0.0177
+    ],
+    "p_platt_better": 0.034,
+    "verdict": "tied"
+  },
+  "ranking": {
+    "groups": 53,
+    "hits": 50,
+    "precision_at_1": 0.9434,
+    "mean_shortfall_when_wrong": 0.1517
+  }
+}
