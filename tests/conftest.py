@@ -1,7 +1,7 @@
 """Shared test setup: repo root on sys.path + stub encoders.
 
 Every test in this suite runs offline. No test may download a model, hit the
-HuggingFace Hub, or call the Anthropic API — the sentence-transformer is always
+HuggingFace Hub, or call the Anthropic API, the sentence-transformer is always
 replaced by a stub encoder with hand-chosen vectors, so assertions about
 similarity bands are exact rather than dependent on real embeddings.
 """

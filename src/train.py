@@ -97,7 +97,7 @@ def main():
     torch.manual_seed(SEED)
     np.random.seed(SEED)
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    print(f"Device: {device}" + ("" if device == "cuda" else "  (CPU training works but is slow — consider Colab T4)"))
+    print(f"Device: {device}" + ("" if device == "cuda" else "  (CPU training works but is slow, consider Colab T4)"))
 
     # ── Data ──
     for path in (args.train_csv, args.external_csv):
@@ -154,6 +154,21 @@ def main():
             use_amp=(device == "cuda"),
         )
         print(f"Model saved to {model_dir}")
+
+        # Reload the SAVED weights before calibrating or evaluating.
+        #
+        # SentenceTransformer.fit() defaults to save_best_model=True, so `model_dir`
+        # holds the best checkpoint by *validation* score while the in-memory `model`
+        # is the final epoch. Those are different weights. Calibrating the in-memory
+        # model and then shipping the directory silently mismatches the calibrator to
+        # the model and reports metrics for weights nobody can load.
+        #
+        # Everything below therefore describes exactly what `model_dir` contains,
+        # which is what gets published.
+        del model
+        if device == "cuda":
+            torch.cuda.empty_cache()
+        model = SentenceTransformer(str(model_dir))
 
     # ── Calibration (fitted on external calibration split only) ──
     cal_raw = encode_pairs(model, ext_cal)

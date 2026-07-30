@@ -1,4 +1,4 @@
-"""Tests for the scoring service — fully offline.
+"""Tests for the scoring service, fully offline.
 
 The dependency-injected Scorer is replaced with one holding a scripted stub encoder, so
 no test here downloads MPNet, touches the HuggingFace Hub, or loads 420 MB of weights.
@@ -35,7 +35,7 @@ Her core stack is Python, SQL, dbt, and Docker, plus AWS services in production 
 """
 
 # Hand-chosen 3-D vectors: the two resume sentences sit on the x and y axes, and each
-# requirement's z-component is "content the resume doesn't have" — which is what pushes
+# requirement's z-component is "content the resume doesn't have", which is what pushes
 # it out of the covered band. Same trick as tests/test_explain.py.
 COVERED = [0.95, 0.1, 0.29]  # best cosine ~0.95
 PARTIAL = [0.42, 0.1, 0.90]  # best cosine ~0.42
@@ -60,8 +60,8 @@ class ScriptedEncoder:
 def scorer_factory():
     reqs = extract_requirements(JD)
     sents = split_sentences(RESUME)
-    assert len(reqs) == 3, "fixture JD changed — rebuild the vectors"
-    assert len(sents) >= 2, "fixture resume changed — rebuild the vectors"
+    assert len(reqs) == 3, "fixture JD changed, rebuild the vectors"
+    assert len(sents) >= 2, "fixture resume changed, rebuild the vectors"
 
     vectors: dict[str, list[float]] = {sents[0]: [1.0, 0.0, 0.0]}
     for sentence in sents[1:]:
@@ -72,7 +72,7 @@ def scorer_factory():
 
     def build(calibrator=None, calibrator_name=None, fine_tuned=True):
         # The whole-document embeddings (resume vs JD) fall through to the default
-        # vector, giving a raw cosine of 1.0 — the calibrator's input is what's under
+        # vector, giving a raw cosine of 1.0, the calibrator's input is what's under
         # test here, not the encoder's geometry.
         encoder = ScriptedEncoder(vectors, default=[1.0, 0.0, 0.0])
         return Scorer(encoder, calibrator, calibrator_name, "test-model", fine_tuned)
@@ -126,7 +126,7 @@ class TestScore:
         assert body["score"] == pytest.approx(1 / (1 + np.exp(-2.0)), abs=1e-3)
 
     def test_response_shape_matches_what_the_web_provider_expects(self, client):
-        """finetuned.ts reads exactly these keys — a rename here breaks the app silently."""
+        """finetuned.ts reads exactly these keys, a rename here breaks the app silently."""
         body = client().post("/score", json={"resume": RESUME, "jd": JD}).json()
 
         assert set(body) == {

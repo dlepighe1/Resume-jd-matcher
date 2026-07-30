@@ -1,10 +1,10 @@
 """
-Calibrate Claude's raw benchmark scores the way the fine-tuned model is calibrated — fit a
-mapping on the CALIBRATION split and apply it to the held-out TEST split — so the comparison
+Calibrate Claude's raw benchmark scores the way the fine-tuned model is calibrated, fit a
+mapping on the CALIBRATION split and apply it to the held-out TEST split, so the comparison
 is calibrated-vs-calibrated rather than calibrated-vs-raw. Calibration is monotonic, so it
 leaves Spearman (ranking) unchanged and only moves MAE (absolute agreement).
 
-PREREQUISITE — score BOTH splits with claude_benchmark.py first:
+PREREQUISITE, score BOTH splits with claude_benchmark.py first:
     python scripts/claude_benchmark.py --bedrock --region us-east-2 --workers 1 --sleep 5 \
         --split test --model us.anthropic.claude-opus-4-5-20251101-v1:0   # already done
     python scripts/claude_benchmark.py --bedrock --region us-east-2 --workers 1 --sleep 5 \
@@ -36,7 +36,7 @@ FINETUNED = {"spearman": 0.8645, "mae": 0.1021}
 def load(path: Path):
     if not path.exists():
         raise SystemExit(
-            f"Missing {path.relative_to(REPO)} — run claude_benchmark.py for that split first."
+            f"Missing {path.relative_to(REPO)}, run claude_benchmark.py for that split first."
         )
     recs = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
     good = [r for r in recs if "claude_pred" in r]  # skip any error rows
@@ -75,7 +75,7 @@ def main() -> None:
         "claude_isotonic_calibrated": {"spearman": iso_sp, "mae": iso_mae},
         "finetuned_mpnet": FINETUNED,
         "note": "Calibrator fit on the 106 calibration pairs, applied to the 106 held-out test "
-                "pairs — same protocol as the fine-tuned model. Monotonic, so Spearman is "
+                "pairs, same protocol as the fine-tuned model. Monotonic, so Spearman is "
                 "unchanged; only MAE moves.",
     }
     out = RESULTS_DIR / "claude_benchmark_calibrated.json"

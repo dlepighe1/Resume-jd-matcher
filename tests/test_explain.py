@@ -1,4 +1,4 @@
-"""Tests for app/explain.py — the skill-gap explanation shown under every score.
+"""Tests for app/explain.py, the skill-gap explanation shown under every score.
 
 Embeddings come from a scripted stub, so each requirement's similarity to each
 resume sentence is exact and the covered/partial/missing bands are tested as
@@ -36,7 +36,7 @@ def banded_model():
     """Scripted encoder giving exactly one covered, one partial, one missing requirement."""
     reqs = extract_requirements(JD)
     sents = split_sentences(RESUME)
-    assert len(reqs) == 3 and len(sents) == 2, "fixture texts changed — rebuild the vectors"
+    assert len(reqs) == 3 and len(sents) == 2, "fixture texts changed, rebuild the vectors"
 
     vectors = {sents[0]: [1.0, 0.0, 0.0], sents[1]: [0.0, 1.0, 0.0]}
     vectors[reqs[0]] = COVERED_REQ

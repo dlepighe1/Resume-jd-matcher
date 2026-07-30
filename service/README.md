@@ -25,7 +25,7 @@ curl -X POST localhost:8000/score -H 'Content-Type: application/json' \
 
 | | |
 |---|---|
-| `GET /health` | `{status, model_id, calibrator, fine_tuned}` — check `fine_tuned` before trusting a score |
+| `GET /health` | `{status, model_id, calibrator, fine_tuned}`, check `fine_tuned` before trusting a score |
 | `POST /score` | `{resume, jd}` → `{score, raw_cosine, calibrator, model_id, requirements[], coverage}` |
 
 `score` is 0–1 and **calibrated** only when a calibrator is loaded. Both fields are
@@ -33,12 +33,12 @@ reported so the caller can tell the difference instead of assuming.
 
 ## Model resolution
 
-1. `models/mpnet-resume-matcher/` — a local checkpoint from `python src/train.py`
+1. `models/mpnet-resume-matcher/`, a local checkpoint from `python src/train.py`
 2. `MODEL_ID` on the HuggingFace Hub (default `dlepighe1/resume-jd-matcher-mpnet`)
 3. **Base `all-mpnet-base-v2`**, with the calibrator dropped and `fine_tuned: false`
 
 Step 3 matters: the calibrators map the *fine-tuned* model's cosine distribution.
-Applying one to base MPNet would produce confident, well-formatted nonsense — so the
+Applying one to base MPNet would produce confident, well-formatted nonsense, so the
 service drops it and says so, rather than serving a number that looks trustworthy and
 isn't.
 
@@ -67,5 +67,5 @@ Linux, so it stays in for the container too.
 pytest service/
 ```
 
-Fully offline — the model is dependency-injected and replaced with a stub encoder whose
+Fully offline, the model is dependency-injected and replaced with a stub encoder whose
 vectors are hand-chosen, so no test downloads weights or hits the Hub.

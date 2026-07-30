@@ -13,7 +13,7 @@ WHAT THIS DOES
    `ext_test` (the second half) is the 106 held-out pairs. We evaluate Claude on it.
 3. Scores each pair with Claude using the SAME system/user prompt and
    schema-constrained structured output the production web app uses
-   (web/lib/schema.ts, web/lib/providers/claude.ts) — so the number reflects the
+   (web/lib/schema.ts, web/lib/providers/claude.ts), so the number reflects the
    engine exactly as the product runs it. Claude returns matchScore in 0..100; we
    divide by 100 to match the label scale.
 4. Computes Spearman + MAE against the ground-truth labels the same way the
@@ -23,7 +23,7 @@ WHAT THIS DOES
 HONEST SCOPE
 ------------
 - The label `score` was authored by a human for each pair; Spearman/MAE here measure
-  how well Claude's 0..100 judgment ranks/agrees with those labels — the identical
+  how well Claude's 0..100 judgment ranks/agrees with those labels, the identical
   yardstick used for the fine-tuned model. That makes the two numbers comparable.
 - Claude reads the RAW job description (the `jd` column), i.e. what a user pastes into
   the product. The fine-tuned model was evaluated on a lightly cleaned JD. This is the
@@ -41,10 +41,10 @@ First-party Anthropic API (default): the SDK resolves ANTHROPIC_API_KEY or an
 `ant auth login` profile automatically. No key is hard-coded here.
 
 Amazon Bedrock (--bedrock): uses the Anthropic Bedrock (Mantle) client, which signs
-with standard AWS SigV4 credentials from the environment — set AWS_ACCESS_KEY_ID,
+with standard AWS SigV4 credentials from the environment, set AWS_ACCESS_KEY_ID,
 AWS_SECRET_ACCESS_KEY, and (for temporary creds) AWS_SESSION_TOKEN, plus --region.
 NOTE: a Bedrock "API key" bearer token (`bedrock-api-key-...`) is NOT AWS SigV4 creds
-and will not work here — use IAM access-key credentials.
+and will not work here, use IAM access-key credentials.
 
 RUN
 ---
@@ -60,7 +60,7 @@ RUN
     # Cheaper full run on Sonnet 5:
     python scripts/claude_benchmark.py --model claude-sonnet-5 --workers 4
 
-Results stream to results/claude_benchmark_predictions.jsonl (resumable — rerun to
+Results stream to results/claude_benchmark_predictions.jsonl (resumable, rerun to
 resume after an interruption; already-scored ids are skipped) and a final summary is
 written to results/claude_benchmark_<model>.json.
 """
@@ -100,7 +100,7 @@ FINETUNED_MAE = 0.1021
 # --- Prompt, ported verbatim from web/lib/schema.ts so the score matches the product ---
 SYSTEM_PROMPT = """You are an expert technical recruiter and career coach. You evaluate how well a candidate's resume fits a specific job description, and you give feedback the candidate can act on today.
 
-How to score (0-100). Anchor to these bands and be willing to use the whole range — a compressed score that calls everything a 70 is useless to the candidate:
+How to score (0-100). Anchor to these bands and be willing to use the whole range, a compressed score that calls everything a 70 is useless to the candidate:
   85-100  Strong match. Meets essentially all core requirements with direct, demonstrated evidence.
   70-84   Good match. Meets most core requirements; gaps are secondary or learnable on the job.
   50-69   Partial match. Meets some core requirements; at least one significant gap.
@@ -112,7 +112,7 @@ Weight the JD's stated requirements far above its "nice to have" and culture sec
 Rules you must not break:
 - Never invent experience the resume does not contain. Every strength and matched skill must be traceable to specific resume text.
 - suggestedBullets must be rewrites grounded in experience the resume ALREADY shows, reframed to speak to this job. They are not aspirational bullets, and the candidate must be able to say them in an interview without lying.
-- Be specific and concrete. "Improve your resume" is not feedback. "Your Airflow work is buried under 'Other tools' — lead with it, the JD names it twice" is feedback.
+- Be specific and concrete. "Improve your resume" is not feedback. "Your Airflow work is buried under 'Other tools', lead with it, the JD names it twice" is feedback.
 - Missing skills are the most useful part of your output. Be honest about them even when the overall score is high."""
 
 
@@ -166,13 +166,13 @@ def load_split(split: str) -> pd.DataFrame:
 
 
 JSON_ONLY_SUFFIX = (
-    "\n\nRespond with ONLY a JSON object — no prose, no markdown fences — matching exactly:\n"
+    "\n\nRespond with ONLY a JSON object, no prose, no markdown fences, matching exactly:\n"
     '{"matchScore": <integer 0-100>, "summary": "<2-4 sentences>", '
     '"matchedSkills": [<strings>], "missingSkills": [<strings>], '
     '"strengths": [<strings>], "suggestedBullets": [<strings>]}'
 )
 
-# Fallback ladder — the modern API surface first, then progressively simpler for older
+# Fallback ladder, the modern API surface first, then progressively simpler for older
 # models / older Bedrock API versions (Opus 4.5 here rejects `effort`; some reject
 # output_config entirely). Whichever tier the endpoint accepts still yields a matchScore.
 _TIERS = ("modern", "structured", "plain")
@@ -189,7 +189,7 @@ def _call(client, model: str, effort: str, row: pd.Series, tier: str):
         }
     elif tier == "structured":
         kwargs["output_config"] = {"format": {"type": "json_schema", "schema": ANALYSIS_SCHEMA}}
-    else:  # plain — no server-side JSON constraint; ask for JSON in the prompt
+    else:  # plain, no server-side JSON constraint; ask for JSON in the prompt
         content += JSON_ONLY_SUFFIX
     kwargs["messages"] = [{"role": "user", "content": content}]
     return client.messages.create(**kwargs)
@@ -198,7 +198,7 @@ def _call(client, model: str, effort: str, row: pd.Series, tier: str):
 def _extract_score(text: str) -> int:
     try:
         return int(json.loads(text)["matchScore"])
-    except Exception:  # noqa: BLE001 — fall back to a regex if the body isn't clean JSON
+    except Exception:  # noqa: BLE001, fall back to a regex if the body isn't clean JSON
         m = re.search(r'"?matchScore"?\s*[:=]\s*(\d{1,3})', text)
         if not m:
             raise
@@ -214,7 +214,7 @@ def score_one(client, model: str, effort: str, row: pd.Series) -> dict:
             used_tier = tier
             break
         except anthropic.BadRequestError as e:
-            last_err = e  # this surface isn't accepted — try a simpler one
+            last_err = e  # this surface isn't accepted, try a simpler one
             continue
         except anthropic.APIError as e:
             return {"id": _row_id(row), "error": f"{type(e).__name__}: {e}"}
@@ -282,7 +282,7 @@ def main() -> None:
     ap.add_argument("--sleep", type=float, default=0.0, help="Seconds to pause after each call (throttle for low rate limits, e.g. 5).")
     ap.add_argument("--split", default="test", choices=["test", "cal"],
                     help="Which held-out half to score: 'test' (106 final-test pairs, default) or "
-                         "'cal' (106 calibration pairs — score these to fit a calibrator).")
+                         "'cal' (106 calibration pairs, score these to fit a calibrator).")
     ap.add_argument("--limit", type=int, default=0, help="Score only the first N pairs (0 = all 106).")
     args = ap.parse_args()
 
@@ -306,12 +306,14 @@ def main() -> None:
         print("Nothing to score (all cached). Computing metrics from checkpoint.")
 
     if args.bedrock:
-        # High max_retries lets the SDK ride out Bedrock's low RPM limits with exponential backoff.
+        # High max_retries lets the SDK ride out Bedrock's low RPM limits with exponential
+        # backoff.
         if args.mantle:
             client = anthropic.AnthropicBedrockMantle(aws_region=args.region, max_retries=10)
         else:
             # Classic bedrock-runtime InvokeModel path; recognizes the IDs from
-            # list_foundation_models (e.g. us.anthropic.claude-opus-4-8) and needs bedrock:InvokeModel.
+            # list_foundation_models (e.g. us.anthropic.claude-opus-4-8) and needs
+            # bedrock:InvokeModel.
             client = anthropic.AnthropicBedrock(aws_region=args.region, max_retries=10)
     else:
         client = anthropic.Anthropic()
@@ -337,7 +339,7 @@ def main() -> None:
     scored = [r for r in results if "claude_pred" in r]
     errored = [r for r in results if "error" in r]
     if len(scored) < 3:
-        sys.exit(f"\nOnly {len(scored)} pairs scored successfully — cannot compute metrics. "
+        sys.exit(f"\nOnly {len(scored)} pairs scored successfully, cannot compute metrics. "
                  f"Errors: {[e.get('error') for e in errored][:5]}")
 
     preds = [r["claude_pred"] for r in scored]

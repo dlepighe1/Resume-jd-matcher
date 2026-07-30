@@ -45,7 +45,7 @@ def main() -> None:
             )
             print(f"OK    {model}")
             working.append(model)
-        except Exception as e:  # noqa: BLE001 — we want to see every failure reason
+        except Exception as e:  # noqa: BLE001, we want to see every failure reason
             print(f"FAIL  {model}  ->  {str(e)[:120]}")
 
     print("\nWORKING MODELS (best first):")

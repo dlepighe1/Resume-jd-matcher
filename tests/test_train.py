@@ -1,4 +1,4 @@
-"""Tests for src/train.py — the calibration and evaluation pieces.
+"""Tests for src/train.py, the calibration and evaluation pieces.
 
 main() itself fine-tunes MPNet and is far too slow for a test suite; what is
 tested here is everything it depends on: the Platt calibrator that ships in
@@ -59,7 +59,7 @@ class TestPlattCalibrator:
         assert out == sorted(out)
 
     def test_survives_a_pickle_round_trip(self):
-        """The app loads this straight off disk — params must persist."""
+        """The app loads this straight off disk, params must persist."""
         calibrator = PlattCalibrator().fit(np.linspace(0.5, 0.9, 20), np.linspace(0.1, 0.9, 20))
 
         restored = pickle.loads(pickle.dumps(calibrator))

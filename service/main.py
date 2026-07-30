@@ -1,4 +1,4 @@
-"""Scoring service — serves the fine-tuned MPNet + Platt calibrator over HTTP.
+"""Scoring service, serves the fine-tuned MPNet + Platt calibrator over HTTP.
 
 The model is ~420 MB of PyTorch weights, which is far past what a Vercel serverless
 function can hold, so it lives here and Next.js calls it via SCORING_SERVICE_URL.
@@ -23,7 +23,7 @@ from pathlib import Path
 
 # Must run before anything imports huggingface_hub. On machines behind a TLS-inspecting
 # proxy (corporate networks, some AV), Python's bundled CA store cannot verify
-# huggingface.co and every model download dies with CERTIFICATE_VERIFY_FAILED — which
+# huggingface.co and every model download dies with CERTIFICATE_VERIFY_FAILED, which
 # then closes hf_hub's shared HTTP client, so even the cached fallback load fails with a
 # confusing "client has been closed". Verifying against the OS cert store fixes it.
 # No-op on Linux/containers, so it is safe to leave in for the HuggingFace Space too.
@@ -87,8 +87,22 @@ class HealthResponse(BaseModel):
     fine_tuned: bool
 
 
+class BaselineResponse(BaseModel):
+    """Raw cosine from the un-fine-tuned base model.
+
+    There is deliberately no `score` field and no calibrator here. The calibrators map the
+    FINE-TUNED model's cosine distribution; applying one to base MPNet would produce a
+    confident, well-formatted number that means nothing. The field name says `raw_cosine`
+    so no caller can mistake it for a calibrated score.
+    """
+
+    raw_cosine: float
+    model_id: str
+    calibrated: bool = False
+
+
 class Scorer:
-    """Holds the loaded model. Constructed once at startup — loading MPNet per request
+    """Holds the loaded model. Constructed once at startup, loading MPNet per request
     would add seconds of latency to every call."""
 
     def __init__(self, model, calibrator, calibrator_name: str | None, model_id: str,
@@ -179,9 +193,9 @@ def load_scorer() -> Scorer:
         log.warning("Could not load %s (%s: %s)", MODEL_ID, type(error).__name__, error)
 
     # Last resort. The calibrators map the FINE-TUNED model's cosine distribution, so
-    # applying one to base MPNet would produce confident, well-formatted nonsense —
-    # drop the calibrator and report fine_tuned=false so the UI can say so.
-    log.warning("Falling back to base %s — scores will be UNCALIBRATED.", BASE_MODEL)
+    # applying one to base MPNet would produce confident, well-formatted nonsense.
+    # Drop the calibrator and report fine_tuned=false so the UI can say so.
+    log.warning("Falling back to base %s, scores will be UNCALIBRATED.", BASE_MODEL)
     model = SentenceTransformer(BASE_MODEL)
     return Scorer(model, None, None, f"{BASE_MODEL} (fallback)", False)
 
@@ -218,8 +232,7 @@ def health(scorer: Scorer = Depends(get_scorer)) -> HealthResponse:
     )
 
 
-@app.post("/score", response_model=ScoreResponse)
-def score(request: ScoreRequest, scorer: Scorer = Depends(get_scorer)) -> ScoreResponse:
+def _validate(request: ScoreRequest) -> None:
     # Also enforced upstream in Next.js, but this service is independently reachable, so
     # it does not get to assume its caller validated anything.
     for name, text in (("resume", request.resume), ("jd", request.jd)):
@@ -229,4 +242,44 @@ def score(request: ScoreRequest, scorer: Scorer = Depends(get_scorer)) -> ScoreR
                 detail=f"{name} needs at least {MIN_WORDS} words to score meaningfully.",
             )
 
+
+@app.post("/score", response_model=ScoreResponse)
+def score(request: ScoreRequest, scorer: Scorer = Depends(get_scorer)) -> ScoreResponse:
+    _validate(request)
     return scorer.score(request.resume, request.jd)
+
+
+# Loaded on first use, not at startup: most requests never touch it, and holding a second
+# 420 MB model resident would double the container's memory and cold-start cost for a
+# comparison feature. The demo surfaces the first-call delay rather than hiding it.
+_base_model = None
+
+
+@app.post("/baseline", response_model=BaselineResponse)
+def baseline(request: ScoreRequest) -> BaselineResponse:
+    """Score the same pair with un-fine-tuned MPNet.
+
+    This exists so the demo can show what fine-tuning bought on the visitor's own text
+    rather than only on the benchmark. Returns raw cosine only, see BaselineResponse.
+    """
+    global _base_model
+    _validate(request)
+
+    if _base_model is None:
+        from sentence_transformers import SentenceTransformer
+
+        log.info("Loading base %s for the baseline endpoint (first call)", BASE_MODEL)
+        _base_model = SentenceTransformer(BASE_MODEL)
+
+    # Same preprocessing as the fine-tuned path. Comparing a preprocessed input against a
+    # raw one would measure preprocessing, not fine-tuning.
+    resume_clean = preprocess_resume(request.resume, MAX_WORDS)
+    jd_clean = smart_truncate_jd(request.jd, MAX_WORDS)
+
+    r_emb = _base_model.encode([resume_clean], show_progress_bar=False, convert_to_numpy=True)
+    j_emb = _base_model.encode([jd_clean], show_progress_bar=False, convert_to_numpy=True)
+
+    return BaselineResponse(
+        raw_cosine=round(float(cosine_similarity(r_emb, j_emb)[0][0]), 4),
+        model_id=BASE_MODEL,
+    )

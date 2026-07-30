@@ -23,9 +23,9 @@ REQUIREMENT_SECTION_PATTERNS = [
 def smart_truncate_jd(jd_text: str, max_words: int = 350) -> str:
     """Strip boilerplate and prioritize the requirements section of a JD.
 
-    Most JDs bury requirements near the end, after company intro and perks —
-    exactly the part standard 512-token truncation cuts off. This keeps the
-    first ~100 words of context plus everything from the requirements onward.
+    Most JDs bury requirements near the end, after the company intro and perks. That is
+    exactly the part standard 512-token truncation cuts off, so this keeps the first ~100
+    words of context plus everything from the requirements onward.
     """
     cleaned = jd_text
     for pattern in BOILERPLATE_PATTERNS:
