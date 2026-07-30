@@ -33,7 +33,7 @@ interface ScoreResponse {
 /**
  * The fine-tuned MPNet + Platt calibrator, served by the Python service.
  *
- * This provider generates no language at all — it embeds, scores, and locates gaps.
+ * This provider generates no language at all, it embeds, scores, and locates gaps.
  * That's why AnalysisResult leaves summary/suggestedBullets optional: pretending an
  * embedding model can write interview-defensible bullets would be a lie the UI tells.
  */
@@ -57,7 +57,7 @@ export async function analyzeWithFineTuned(
     throw new AnalyzeError(
       "MODEL_SERVICE_UNREACHABLE",
       timedOut
-        ? "The scoring service did not respond in time. If it has been idle it may still be waking up — try again in a moment."
+        ? "The scoring service did not respond in time. If it has been idle it may still be waking up, try again in a moment."
         : `Could not reach the scoring service at ${baseUrl}. Is it running?`,
       503,
     );
@@ -83,7 +83,7 @@ export async function analyzeWithFineTuned(
 
   return {
     matchScore,
-    // Only meaningful for the calibrated model — the MAE was measured on *that* model.
+    // Only meaningful for the calibrated model, the MAE was measured on *that* model.
     // Quoting it next to an uncalibrated base-MPNet score would be borrowing credibility
     // the number in front of you hasn't earned.
     errorBand: calibrated
@@ -94,12 +94,12 @@ export async function analyzeWithFineTuned(
         }
       : undefined,
     matchedSkills: covered.map((r) => r.requirement),
-    // A partially-covered requirement is still a gap, so it belongs in the gap list —
+    // A partially-covered requirement is still a gap, so it belongs in the gap list 
     // but it is a different kind of gap from one with no evidence at all, and the label
     // says so rather than flattening the two together.
     missingSkills: [
       ...missing.map((r) => r.requirement),
-      ...partial.map((r) => `Partially covered — ${r.requirement}`),
+      ...partial.map((r) => `Partially covered: ${r.requirement}`),
     ],
     // The model's own evidence lines: the resume sentences it matched each requirement
     // against. Every "strength" here is therefore traceable by construction.

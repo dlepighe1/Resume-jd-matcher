@@ -1,5 +1,5 @@
 /**
- * ATS keyword coverage — deterministic, no model involved.
+ * ATS keyword coverage, deterministic, no model involved.
  *
  * This is NOT a worse version of the semantic score; it answers a different question.
  * Applicant tracking systems filter on literal string matches. A resume can be a perfect
@@ -10,7 +10,7 @@
  * So it runs on every analysis, for every engine, and is reported alongside the score.
  *
  * Honest limitation: matching against a curated vocabulary means a skill that isn't in
- * the list is invisible here. That's a deliberate trade — the alternative (treating every
+ * the list is invisible here. That's a deliberate trade, the alternative (treating every
  * capitalised noun as a skill) produces noise like "Acme" and "PTO" as missing keywords.
  */
 
@@ -107,16 +107,36 @@ const SKILL_ALIASES: Record<string, string[]> = {
   datadog: [],
 };
 
+/** How prominently the posting asks for a skill the resume does not mention. */
+export interface KeywordGap {
+  keyword: string;
+  /** Times the posting mentions it, counting aliases. */
+  occurrences: number;
+  /** Whether it appears in or after the requirements section rather than only in the intro. */
+  inRequirements: boolean;
+  priority: "high" | "medium" | "low";
+}
+
 export interface AtsAnalysis {
   /** Percentage of JD keywords literally present in the resume, 0-100. */
   score: number;
   matched: string[];
   missing: string[];
+  /** `missing`, ordered most prominent first. */
+  gaps: KeywordGap[];
 }
 
 /**
+ * Section headings that begin the part of a posting where the real requirements live.
+ * Mirrors REQUIREMENT_SECTION_PATTERNS in src/text_utils.py, which is what the model was
+ * trained under, so the two never disagree about where a posting's requirements start.
+ */
+const REQUIREMENTS_HEADING =
+  /(requirements?|qualifications?|what you.?ll need|must have|responsibilities|what you.?ll do|in this role|you will)/i;
+
+/**
  * Which skills the JD asks for, and which of those literally appear in the resume.
- * Returns null when the JD names no recognisable skills — better to show nothing than a
+ * Returns null when the JD names no recognisable skills, better to show nothing than a
  * meaningless 0%.
  */
 export function analyzeAtsKeywords(jobDescription: string, resumeText: string): AtsAnalysis | null {
@@ -144,21 +164,73 @@ export function analyzeAtsKeywords(jobDescription: string, resumeText: string): 
     score: Math.round((matched.length / total) * 100),
     matched,
     missing,
+    gaps: rankGaps(jobDescription, missing),
   };
 }
 
 /**
+ * Order the missing skills by how prominently the posting asks for them.
+ *
+ * Prominence is measured from the posting alone: how many times a skill is named, and
+ * whether it appears in the requirements section rather than only in the company blurb. Both
+ * are deterministic and inspectable, which is the point. This is emphatically **not** a
+ * prediction of how much the match score would rise if the skill were added. Producing such
+ * a number without measuring it would be the kind of confident invention this project exists
+ * to argue against, and measuring it properly would mean re-scoring the resume once per
+ * candidate keyword.
+ *
+ * A posting that names Airflow twice inside its requirements is telling you something a
+ * posting that mentions it once under "nice to have" is not.
+ */
+function rankGaps(jobDescription: string, missing: string[]): KeywordGap[] {
+  const jd = jobDescription.toLowerCase();
+  const headingMatch = REQUIREMENTS_HEADING.exec(jd);
+  const requirementsFrom = headingMatch ? headingMatch.index : null;
+  const requirementsText = requirementsFrom === null ? "" : jd.slice(requirementsFrom);
+
+  return missing
+    .map((keyword) => {
+      const canonical = keyword.replace(/ /g, "_");
+      const surfaceForms = [keyword, ...(SKILL_ALIASES[canonical] ?? SKILL_ALIASES[keyword] ?? [])];
+
+      const occurrences = surfaceForms.reduce((sum, form) => sum + countTerm(jd, form), 0);
+      const inRequirements =
+        requirementsFrom !== null && surfaceForms.some((form) => containsTerm(requirementsText, form));
+
+      const priority: KeywordGap["priority"] =
+        inRequirements && occurrences >= 2 ? "high" : inRequirements || occurrences >= 2 ? "medium" : "low";
+
+      return { keyword, occurrences, inRequirements, priority };
+    })
+    .sort((a, b) => {
+      const rank = { high: 0, medium: 1, low: 2 } as const;
+      if (rank[a.priority] !== rank[b.priority]) return rank[a.priority] - rank[b.priority];
+      if (a.occurrences !== b.occurrences) return b.occurrences - a.occurrences;
+      return a.keyword.localeCompare(b.keyword);
+    });
+}
+
+/** Occurrences of a term under the same boundary rules `containsTerm` uses. */
+function countTerm(haystack: string, term: string): number {
+  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pluralizable = /^[a-z ]{4,}$/i.test(term);
+  const suffix = pluralizable ? "s?" : "";
+  const matches = haystack.match(new RegExp(`(^|[^a-z0-9])${escaped}${suffix}([^a-z0-9]|$)`, "gi"));
+  return matches ? matches.length : 0;
+}
+
+/**
  * Whole-term match, so "go" doesn't fire on "going" and "r" doesn't fire on every word
- * containing the letter r — the failure mode that makes naive keyword matchers useless.
+ * containing the letter r, the failure mode that makes naive keyword matchers useless.
  */
 function containsTerm(haystack: string, term: string): boolean {
   const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  // Skill names contain +, #, /, . — so \b is unreliable at their edges (it would split
+  // Skill names contain +, #, /, ., so \b is unreliable at their edges (it would split
   // "c++" and "node.js"). Require an alphanumeric boundary instead: the character on
   // either side must not be a letter or digit.
   //
   // Punctuation MUST count as a boundary, or a skill at the end of a sentence never
-  // matches — "Postgres.", "C#.", "Node.js." are all real resume text.
+  // matches. "Postgres.", "C#.", "Node.js." are all real resume text.
   //
   // This still blocks the failure mode that makes naive matchers useless: "go" inside
   // "going" and "sql" inside "postgresql" are both rejected, because the adjacent

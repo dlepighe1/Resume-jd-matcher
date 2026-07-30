@@ -23,12 +23,12 @@ export async function analyzeWithClaude(
       model: modelId,
       max_tokens: 4096,
       // Adaptive thinking is the only supported on-mode for current Opus models, and it
-      // is off unless requested. temperature/top_p are rejected outright — behaviour is
+      // is off unless requested. temperature/top_p are rejected outright, behaviour is
       // steered by the prompt, not by sampling knobs.
       thinking: { type: "adaptive" },
       output_config: {
         effort: "medium",
-        // Constrains decoding to the schema — this is what makes malformed JSON a
+        // Constrains decoding to the schema, this is what makes malformed JSON a
         // non-issue on this path, rather than something we retry our way out of.
         format: zodOutputFormat(analysisSchema),
       },
@@ -39,12 +39,12 @@ export async function analyzeWithClaude(
     throw toAnalyzeError(error);
   }
 
-  // A safety refusal comes back as a successful HTTP 200 with empty content — check
+  // A safety refusal comes back as a successful HTTP 200 with empty content, check
   // stop_reason before reading the result, or this surfaces as a confusing parse error.
   if (message.stop_reason === "refusal") {
     throw new AnalyzeError(
       "REFUSED",
-      "Claude declined to analyze this content. Retrying will not help — try different text.",
+      "Claude declined to analyze this content. Retrying will not help, try different text.",
       422,
     );
   }
@@ -74,7 +74,7 @@ export async function analyzeWithClaude(
   };
 }
 
-/** Most specific SDK error class first — a single broad catch would throw away the
+/** Most specific SDK error class first, a single broad catch would throw away the
  *  distinction between "retry in 30s" and "your key is wrong". */
 function toAnalyzeError(error: unknown): AnalyzeError {
   if (error instanceof Anthropic.RateLimitError) {

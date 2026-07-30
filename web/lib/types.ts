@@ -3,7 +3,7 @@
 
 import type { AtsAnalysis } from "@/lib/ats";
 
-export const PROVIDERS = ["finetuned", "claude", "openrouter"] as const;
+export const PROVIDERS = ["finetuned", "claude"] as const;
 export type ProviderId = (typeof PROVIDERS)[number];
 
 /**
@@ -43,12 +43,6 @@ export const PROVIDER_META: Record<ProviderId, ProviderMeta> = {
     tagline: "Full written feedback and tailored bullets",
     capabilities: { score: true, skillGap: true, generativeFeedback: true, calibrated: false },
   },
-  openrouter: {
-    id: "openrouter",
-    name: "Open-weights",
-    tagline: "Free model via OpenRouter",
-    capabilities: { score: true, skillGap: true, generativeFeedback: true, calibrated: false },
-  },
 };
 
 export type RequirementStatus = "covered" | "partial" | "missing";
@@ -66,14 +60,14 @@ export interface AnalysisResult {
   /**
    * Fine-tuned provider only.
    *
-   * NOT a per-pair confidence interval — we have no principled way to compute one for a
+   * NOT a per-pair confidence interval, we have no principled way to compute one for a
    * single prediction. It is the model's *measured* mean absolute error on held-out data,
    * expressed as a band. Saying "72, and this model is typically within ±10 on pairs it
    * has never seen" is a claim the evidence supports. Saying "95% CI 66-78" for one pair
    * would be a number that looks rigorous and isn't.
    */
   errorBand?: { low: number; high: number; basis: string };
-  /** Deterministic keyword coverage. Computed for every engine — it is a different
+  /** Deterministic keyword coverage. Computed for every engine because it is a different
    *  signal from semantic similarity, not a worse one. */
   ats?: AtsAnalysis;
   meta: {
@@ -86,7 +80,7 @@ export interface AnalysisResult {
 
 export interface Verdict {
   label: string;
-  /** Tailwind classes for the band. Colour is never the only signal — the label
+  /** Tailwind classes for the band. Colour is never the only signal, the label
    *  is always rendered alongside it. */
   ring: string;
   text: string;
@@ -134,7 +128,7 @@ export function verdictFor(score: number): Verdict {
   };
 }
 
-/** Both texts need enough signal to score meaningfully — below this we refuse
+/** Both texts need enough signal to score meaningfully, below this we refuse
  *  rather than return a confident-looking number built on nothing. */
 export const MIN_WORDS = 50;
 

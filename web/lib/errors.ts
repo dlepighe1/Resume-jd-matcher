@@ -1,5 +1,5 @@
 /** Every failure the analyze route can surface, with the HTTP status it maps to.
- *  Distinct codes so the client can react differently — a cold model service is a
+ *  Distinct codes so the client can react differently, a cold model service is a
  *  "wait a moment" and a refusal is a dead end, and the UI should not conflate them. */
 export type ErrorCode =
   | "INVALID_REQUEST"

@@ -78,7 +78,7 @@ describe("mapping the scoring service response", () => {
 
     expect(result.missingSkills).toEqual([
       "Kubernetes at scale",
-      "Partially covered — Statistics and experimental design",
+      "Partially covered: Statistics and experimental design",
     ]);
   });
 
@@ -87,11 +87,11 @@ describe("mapping the scoring service response", () => {
 
     const result = await analyzeWithFineTuned(JD, RESUME);
 
-    // Two covered requirements matched the same resume sentence — it should appear once.
+    // Two covered requirements matched the same resume sentence, it should appear once.
     expect(result.strengths).toEqual(["Built ETL pipelines in Python and SQL."]);
   });
 
-  it("produces no generative fields — this model cannot write prose", async () => {
+  it("produces no generative fields, this model cannot write prose", async () => {
     mockScoreService(SCORE_RESPONSE);
 
     const result = await analyzeWithFineTuned(JD, RESUME);

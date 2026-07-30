@@ -9,7 +9,7 @@ describe("keyword coverage", () => {
       "I know Python, Airflow, Rust, Scala and Kubernetes.",
     )!;
 
-    // Rust/Scala/Kubernetes are on the resume but not in the posting — they are not
+    // Rust/Scala/Kubernetes are on the resume but not in the posting, they are not
     // credit, and they are not gaps. They simply aren't relevant to this job.
     expect(ats.matched.sort()).toEqual(["airflow", "python"]);
     expect(ats.missing).toEqual([]);
@@ -92,5 +92,73 @@ describe("keyword coverage", () => {
     const ats = analyzeAtsKeywords("PYTHON and sql required", "python and SQL")!;
 
     expect(ats.score).toBe(100);
+  });
+});
+
+describe("keyword gap ranking", () => {
+  const REQUIREMENTS_JD = `Acme is a wonderful place to work with great people and free lunch.
+
+Requirements:
+- 3+ years of Python and SQL for data processing
+- Experience building pipelines with Airflow
+- Python testing experience is essential
+- Familiarity with Docker`;
+
+  const EMPTY_RESUME = "I once used Microsoft Excel for a spreadsheet at a previous employer.";
+
+  it("ranks a skill named twice inside requirements as high priority", () => {
+    const result = analyzeAtsKeywords(REQUIREMENTS_JD, EMPTY_RESUME)!;
+    const python = result.gaps.find((g) => g.keyword === "python")!;
+
+    expect(python.occurrences).toBeGreaterThanOrEqual(2);
+    expect(python.inRequirements).toBe(true);
+    expect(python.priority).toBe("high");
+  });
+
+  it("ranks a skill named once inside requirements below one named twice", () => {
+    const result = analyzeAtsKeywords(REQUIREMENTS_JD, EMPTY_RESUME)!;
+    const docker = result.gaps.find((g) => g.keyword === "docker")!;
+
+    expect(docker.inRequirements).toBe(true);
+    expect(docker.occurrences).toBe(1);
+    expect(docker.priority).toBe("medium");
+  });
+
+  it("treats a skill mentioned only in the company blurb as low priority", () => {
+    const jd = `We are a Kubernetes shop and proud of it, with a lovely office.
+
+Requirements:
+- 3+ years of Python`;
+    const result = analyzeAtsKeywords(jd, EMPTY_RESUME)!;
+    const k8s = result.gaps.find((g) => g.keyword === "kubernetes")!;
+
+    expect(k8s.inRequirements).toBe(false);
+    expect(k8s.occurrences).toBe(1);
+    expect(k8s.priority).toBe("low");
+  });
+
+  it("returns gaps sorted most prominent first", () => {
+    const { gaps } = analyzeAtsKeywords(REQUIREMENTS_JD, EMPTY_RESUME)!;
+    const rank = { high: 0, medium: 1, low: 2 } as const;
+
+    for (let i = 1; i < gaps.length; i++) {
+      expect(rank[gaps[i - 1].priority]).toBeLessThanOrEqual(rank[gaps[i].priority]);
+    }
+  });
+
+  it("only ranks skills the resume is actually missing", () => {
+    const resume = "I have five years of Python and SQL experience building Airflow pipelines.";
+    const result = analyzeAtsKeywords(REQUIREMENTS_JD, resume)!;
+
+    expect(result.gaps.map((g) => g.keyword)).not.toContain("python");
+    expect(result.gaps.map((g) => g.keyword)).toEqual(result.missing);
+  });
+
+  it("handles a posting with no requirements heading without crashing", () => {
+    const jd = "We want someone who knows Python and Docker. That is the whole posting.";
+    const result = analyzeAtsKeywords(jd, EMPTY_RESUME)!;
+
+    expect(result.gaps.every((g) => g.inRequirements === false)).toBe(true);
+    expect(result.gaps.length).toBeGreaterThan(0);
   });
 });

@@ -4,7 +4,7 @@
  * Every value is read through a getter, so a missing key throws only when the
  * feature that needs it is actually used. That means you can run the app with
  * just ANTHROPIC_API_KEY set and the Claude provider works, while selecting the
- * OpenRouter provider fails with a message that says exactly what to set — instead
+ * OpenRouter provider fails with a message that says exactly what to set, instead
  * of the whole app refusing to boot because one optional key is absent.
  *
  * Never import this from a client component: it reads secrets.
@@ -41,26 +41,6 @@ export const env = {
     },
   },
 
-  openrouter: {
-    get apiKey() {
-      return required(
-        "OPENROUTER_API_KEY",
-        "Create one at https://openrouter.ai/keys and add it to web/.env.local",
-      );
-    },
-    /**
-     * Deliberately has no default. OpenRouter's free-tier model slugs are rotated and
-     * retired regularly, so any value hardcoded here would silently 404 one day. Pick a
-     * current one from https://openrouter.ai/models?q=free and set it explicitly.
-     */
-    get model() {
-      return required(
-        "OPENROUTER_MODEL",
-        'Pick a current free model from https://openrouter.ai/models?q=free (e.g. a ":free" slug) and set it — free slugs rotate, so there is no safe default.',
-      );
-    },
-  },
-
   scoringService: {
     /** The FastAPI service hosting the fine-tuned MPNet + Platt calibrator. */
     get url() {
@@ -69,18 +49,16 @@ export const env = {
         "Point this at the Python scoring service (http://localhost:8000 locally, or your HuggingFace Space URL).",
       );
     },
-  },
-
-  supabase: {
-    get url() {
-      return required("SUPABASE_URL", "Find it in your Supabase project settings > API.");
-    },
-    /** Service-role key — server-side only. Exposing this to the browser bypasses row-level security. */
-    get serviceRoleKey() {
-      return required(
-        "SUPABASE_SERVICE_ROLE_KEY",
-        "Supabase project settings > API > service_role. Server-side only — never expose it to the client.",
-      );
+    /** Whether the service is configured at all. The demo degrades to the precomputed
+     *  benchmark rather than erroring when it isn't. */
+    get isConfigured() {
+      return Boolean(process.env.SCORING_SERVICE_URL?.trim());
     },
   },
 } as const;
+
+/** Claude is optional in the demo: without a key the live comparison simply omits it
+ *  and says so, rather than failing the whole request. */
+export function hasAnthropicKey(): boolean {
+  return Boolean(process.env.ANTHROPIC_API_KEY?.trim());
+}

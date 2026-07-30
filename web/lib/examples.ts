@@ -16,7 +16,7 @@ What we offer: competitive salary, unlimited PTO, comprehensive health benefits.
 Acme is an equal opportunity employer and does not discriminate on any protected basis.`;
 
 export const EXAMPLE_RESUME = `Jane Smith
-Data Engineer — Chicago, IL
+Data Engineer. Chicago, IL
 
 PROFESSIONAL SUMMARY
 Data engineer with five years of experience building batch and streaming pipelines for analytics teams. Comfortable owning a dataset end to end, from ingestion through the dashboards that depend on it.
@@ -25,15 +25,15 @@ TECHNICAL SKILLS
 Python, SQL, Airflow, dbt, Spark, Docker, AWS (S3, Lambda, Redshift, Glue), Postgres, Git.
 
 PROFESSIONAL EXPERIENCE
-Beta Analytics — Senior Data Engineer (2022-present)
+Beta Analytics. Senior Data Engineer (2022-present)
 Built and operated ETL pipelines in Airflow processing two terabytes of event data daily across 40+ DAGs.
 Designed an A/B testing framework now used by three product teams to size and evaluate experiments.
 Migrated the warehouse from Postgres to Redshift, cutting median dashboard query time from 14s to under 3s.
 Wrote the data quality runbook used across the engineering org.
 
-Gamma Corp — Data Engineer (2020-2022)
+Gamma Corp. Data Engineer (2020-2022)
 Built ingestion jobs in Python pulling from a dozen third-party vendor APIs into S3.
 Automated a weekly finance report that had been assembled by hand, saving roughly six hours a week.
 
 EDUCATION
-B.S. Computer Science, State University — 2020`;
+B.S. Computer Science, State University. 2020`;
