@@ -22,7 +22,7 @@ to HuggingFace Spaces.
 
 - Production model: fine-tuned `all-mpnet-base-v2` (combined CoSENT + CosineSimilarity loss) + isotonic calibration.
 - External final test (106 pairs, unseen JDs): **Spearman 0.8667, MAE 0.1005** (isotonic); Platt variant 0.8645 / 0.1021.
-- Training data: 815 pairs from 305 unique JDs; external set 212 pairs from 53 unseen JDs (split 106 calibration / 106 final test).
+- Training data: 815 pairs from 255 unique JDs; external set 212 pairs from 53 unseen JDs (split 106 calibration / 106 final test).
 - Key negative results (kept, they are the story): RoBERTa cross-encoder hit 0.89 Spearman internally but **-0.61 externally** (overfitting); augmentation/regularization/K-fold fixes improved it to at best 0.51 external — never beating the calibrated bi-encoder.
 
 ## Deliverables

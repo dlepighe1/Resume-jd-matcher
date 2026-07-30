@@ -1,9 +1,9 @@
 # Deploying the demo to HuggingFace Spaces
 
 Prerequisite: the fine-tuned model is on HF Hub. Run `Notebooks/06_production_v3.ipynb`
-in Colab — its final cell pushes the model, both calibrators, and a model card to
+in Colab, its final cell pushes the model, both calibrators, and a model card to
 `dlepighe1/resume-jd-matcher-mpnet` automatically. Also download `platt_calibrator.pkl`
-from the run into this repo's `models/` folder (tiny — it's committed to git).
+from the run into this repo's `models/` folder (tiny, it's committed to git).
 
 ## Create the Space
 
@@ -13,7 +13,7 @@ from the run into this repo's `models/` folder (tiny — it's committed to git).
 
 ```yaml
 ---
-title: ResumeAI — Resume ↔ JD Matcher
+title: ResumeAI. Resume ↔ JD Matcher
 emoji: 🎯
 sdk: streamlit
 app_file: app/app.py
@@ -35,4 +35,4 @@ pip install -r requirements.txt
 streamlit run app/app.py
 ```
 
-Without the fine-tuned weights the app falls back to base MPNet and shows a warning banner — everything still works for UI testing.
+Without the fine-tuned weights the app falls back to base MPNet and shows a warning banner, everything still works for UI testing.

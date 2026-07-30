@@ -1,6 +1,6 @@
 """Skill-gap explanation: match JD requirements against resume evidence.
 
-Deterministic and model-driven — uses the same sentence-transformer embeddings
+Deterministic and model-driven, uses the same sentence-transformer embeddings
 that produce the match score, so the explanation and the score never disagree
 about what the model "sees". No API keys involved.
 """

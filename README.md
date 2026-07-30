@@ -1,262 +1,330 @@
-# ResumeAI — Resume ↔ Job Description Matching
+# ResumeAI: Resume and Job Description Matching
 
-Fine-tuned sentence-transformer system that scores how well a resume fits a job description
-(0–1, calibrated), explains *why* via skill-gap analysis, and generalizes to job postings it
-has never seen.
+A fine-tuned sentence-transformer that scores how well a resume fits a job description on a
+calibrated 0 to 1 scale, explains which requirements are covered, and generalizes to job
+postings it has never seen.
 
-**Final model:** `all-mpnet-base-v2` fine-tuned with a combined ranking + calibration loss,
-plus Platt score calibration — **Spearman 0.86, MAE 0.10 on 106 fully held-out pairs
-from unseen job postings** (13 of 14 industries under 0.15 MAE) — **outscoring Claude
-Opus 4.5's 0.71 / 0.16 on the same benchmark**, at 109M params and zero per-query API
-cost. Platt is the production calibrator (a 2-parameter sigmoid can't overfit a 106-pair
-calibration set); isotonic regression scores identically within bootstrap noise.
+This is a research repository. It contains the study, the data, the trained model pipeline,
+and a single demo page for inspecting the results. It is not a product.
 
-**The app is a three-engine comparison harness.** The same resume/JD pair is scored by the
-fine-tuned model, by Claude, and by a free open-weights model, side by side — because the
-interesting question isn't "what does an LLM say", it's *whether a small purpose-built model
-beats a general one, and how you'd know*. It does: benchmarked head-to-head on the same 106
-held-out pairs, the fine-tuned model beats Claude Opus 4.5 on both ranking and calibrated
-error ([see below](#fine-tuned-model-vs-claude-a-frontier-llm)) — and the UI is explicit
-about which engine has an external-validation number behind it.
+**Current model:** `all-mpnet-base-v2` fine-tuned with a combined ranking and calibration
+objective, plus Platt score calibration. Measured across three seeds on 106 fully held-out
+pairs from 53 unseen job postings:
+
+| Metric | Value |
+|---|---|
+| Spearman correlation | **0.8355 ± 0.0144** |
+| Mean absolute error | **0.1145 ± 0.0071** |
+| Production seed (43) | 0.834 Spearman, 95% CI [0.764, 0.876] |
+| Base model before fine-tuning | 0.6246, so fine-tuning contributes **+0.211 Spearman** |
+| Precision@1 across 53 unseen postings | **94.3%** against a 25% random baseline |
+
+> **Status note.** These numbers describe `models/seed43`, the checkpoint saved by the most
+> recent production run. That checkpoint has not yet been published to the HuggingFace Hub,
+> so the live demo cannot serve it and the audit notebook has not been re-run against it.
+> See [Reproducing the model](#reproducing-the-model).
 
 | | |
 |---|---|
-| 🎯 Live demo | *(Vercel — link coming)* |
-| 📊 Full metrics | [`Results/results_summary.json`](Results/results_summary.json) |
-| 📓 Research notebooks | [`Notebooks/`](Notebooks/) — six notebooks, in story order |
-| 🔁 Reproduce | `python src/train.py` (details below) |
-| 🧪 Tests | 104, all offline — no model downloads, no API calls |
+| Full metrics | [`Results/results_summary.json`](Results/results_summary.json) |
+| Research notebooks | [`Notebooks/`](Notebooks/), 01 to 05 in story order, plus an audit |
+| Data card | [`docs/DATA_CARD.md`](docs/DATA_CARD.md) |
+| Scope of this repo | [`docs/RESEARCH_SPEC.md`](docs/RESEARCH_SPEC.md) |
+| Product spec (separate repo) | [`docs/SAAS_SPEC.md`](docs/SAAS_SPEC.md) |
+| Reproduce | `python src/train.py` |
+| Tests | 80, all offline: no model downloads, no API calls |
 
 ---
 
-## The story (why this project is interesting)
+## The study
 
-This isn't a "fine-tuned a model, got a number" project. The interesting part is what went
-wrong in the middle and how the evidence changed the design.
+The interesting part of this project is not the final number. It is what went wrong in the
+middle and how the evidence changed the design.
 
 ### 1. Baseline fine-tuning (`Notebooks/01`)
-Fine-tuned three bi-encoders (MiniLM, MPNet, BGE) on 500 curated resume–JD pairs with
-CoSENTLoss. Stratified 80/10/10 splits, baselines measured before training, per-match-type
-error analysis. Fine-tuning roughly doubled ranking quality over the base models.
+
+Three bi-encoders (MiniLM, MPNet, BGE) fine-tuned on 500 curated pairs drawn from 150 real
+job postings, using CoSENT loss. Stratified 80/10/10 splits, baselines measured before
+training, per-match-type error analysis.
+
+MPNet roughly doubled its ranking quality, from 0.3682 to 0.8444 Spearman. Every model's
+mean absolute error got *worse*. That contradiction is the subject of the next notebook.
 
 ### 2. Architecture study (`Notebooks/02`)
-Compared classic bi-encoder (MPNet), instruction-aware bi-encoder (E5), a RoBERTa
-cross-encoder, and a two-stage hybrid. Found the **calibration gap**: CoSENT-trained
-bi-encoders rank well but compress every score into ~0.5–0.9 (cosine floor). Isotonic
-regression fixed most of it without retraining.
 
-### 3. External validation exposes the fraud (`Notebooks/03`)
-Built a 212-pair external test set from 53 job postings the models had *never seen*, plus
-smart JD preprocessing (strip EEO/benefits boilerplate, prioritize requirements sections).
-Result: the cross-encoder that looked like the winner — **0.89 Spearman internally —
-collapsed to −0.61 Spearman externally.** It had memorized the 200 training JDs
-(125M parameters ÷ 400 training pairs ≈ 312k parameters per example). The humble
-bi-encoder + calibration held up at 0.76 external. **Internal test sets lie; external
-validation is the only number that matters.**
+Compared a classic bi-encoder (MPNet), an instruction-aware bi-encoder (E5), a RoBERTa
+cross-encoder, and a two-stage hybrid.
 
-### 4. Systematic fixes — and an honest negative result (`Notebooks/04`)
-Ablated four overfitting fixes on the cross-encoder: 3× data augmentation (section
-shuffling, sentence dropping, keyword noise), weight decay, a smaller DistilRoBERTa, and a
-5-fold ensemble. Every fix helped (−0.35 → +0.51 external Spearman) — **and none of them
-beat the simple calibrated bi-encoder (0.77).** At this data scale, architecture capacity
-is a liability, not an asset.
+The finding is the **calibration gap**. CoSENT-trained bi-encoders rank well but compress
+every score into roughly 0.5 to 0.9, because any two English documents share a cosine
+similarity floor. Isotonic regression cut mean absolute error by about 38% for both
+bi-encoders without retraining.
 
-### 5. Production v2 (`Notebooks/05`) → Production v3 (`Notebooks/06`, current)
-Acted on the evidence instead of the leaderboard instinct:
-- **62 % more unique JDs** (815 pairs / 305 postings) — data beats architecture.
-- **Combined loss** (CoSENT + CosineSimilarity): gradient signal for ranking *and* absolute score.
-- **Calibration fitted on external data**: the 212 external pairs split 106/106 — isotonic &
-  Platt calibrators fitted on the first half, final numbers reported only on the untouched second half.
+This notebook also produced the project's most useful accident. Fine-tuned MPNet scores
+0.5691 here, 0.8444 in notebook 01, and 0.8516 in notebook 03, under an identical
+configuration. Training was never seeded, and at 400 examples a single run swings roughly
+0.28 Spearman. The notebook documents this in a caveat cell rather than hiding it, and it is
+why the production run reports mean and standard deviation across three seeds.
 
-**Final external results (106 unseen pairs):**
+### 3. External validation (`Notebooks/03`)
 
-| Model | Spearman ↑ | MAE ↓ |
+Built a 212-pair external test set from 53 job postings the models had never seen. Zero JD
+overlap, asserted in code rather than assumed. Added job description preprocessing that
+strips EEO and benefits boilerplate and prioritizes the requirements section.
+
+The RoBERTa cross-encoder was the best model on the internal test at 0.8917 Spearman. On
+unseen postings it scored **-0.6122**: not merely worse, but anti-correlated, ranking good
+candidates below bad ones. It had memorized the 150 training postings. At 125M parameters
+over 400 training examples, that is roughly 312,000 parameters per example.
+
+Across the identical transfer, the calibrated bi-encoder lost 0.076 Spearman and held at
+0.7614.
+
+Internal test sets drawn from the same job postings as training will flatter the largest
+model available. External validation was the only thing that caught this.
+
+### 4. Systematic fixes, and a negative result (`Notebooks/04`)
+
+Ablated four anti-overfitting fixes on the cross-encoder: 3x data augmentation, weight decay,
+a smaller DistilRoBERTa backbone, and a 5-fold ensemble. Every fix helped, moving external
+Spearman from -0.35 to +0.51. None of them beat the simple calibrated bi-encoder at 0.77.
+
+At this data scale, cross-encoder capacity is a liability rather than an asset.
+
+### 5. Production (`Notebooks/05`)
+
+Acted on the evidence rather than the leaderboard:
+
+- **70% more unique postings.** 815 pairs from 255 postings, up from 500 pairs from 150.
+- **Combined loss.** CoSENT for ranking plus CosineSimilarity for absolute score, so the
+  model receives gradient signal in both directions.
+- **Calibration fitted on external data.** The 212 external pairs split 106 for calibration
+  and 106 for the final test. Every reported number comes from the untouched half.
+- **Production discipline.** Every RNG seeded before each `fit()` call, three seeds reported
+  as mean and standard deviation, a base-model baseline on the same held-out pairs, bootstrap
+  95% confidence intervals, and precision@1 across the unseen postings.
+
+Results on the 106-pair final test:
+
+| Model | Spearman | MAE |
 |---|---|---|
-| **MPNet + Platt calibration (production)** | **0.8645** | **0.1021** |
-| MPNet + isotonic calibration | 0.8667 | 0.1005 |
-| MPNet raw (combined loss) | 0.8645 | 0.1325 |
-| DistilRoBERTa cross-encoder (aug + reg) | 0.8379 | 0.1816 |
-| RoBERTa cross-encoder (aug + reg) | 0.6514 | 0.2209 |
+| **MPNet + Platt calibration (production)** | **0.834** | **0.1163** |
+| MPNet + isotonic calibration | 0.8343 | 0.1077 |
+| MPNet raw (combined loss) | 0.834 | 0.1561 |
+| DistilRoBERTa cross-encoder (augmented, regularized) | 0.7586 | 0.1939 |
+| Base MPNet, no fine-tuning | 0.6246 | 0.2138 |
 
-The two calibrators are statistically tied — the 0.002 MAE gap is well inside
-run-to-run training noise and the bootstrap confidence interval on a 106-pair test
-set. Platt ships because its 2-parameter sigmoid cannot overfit a small calibration
-split, while isotonic's step function can (it fits the calibration set noticeably
-tighter than it generalizes). Notebook 06 quantifies the tie with a bootstrap.
+The two calibrators are statistically tied. A 2,000-resample bootstrap on the difference in
+mean absolute error gives a 95% interval of [-0.0005, +0.0177], which straddles zero. Platt
+ships on a robustness argument rather than a metric win: a two-parameter sigmoid cannot
+overfit a 106-pair calibration split, while an isotonic step function can.
 
-Batch ranking: 106 resumes scored against one JD in ~1.1 s (T4).
+Across three seeds the model spans 0.8186 to 0.8538 Spearman. That spread is a property of
+training at this data scale and is the reason single-run numbers are not quoted.
 
-Production v3 (`Notebooks/06`) hardens this result: multi-seed training with
-mean ± std reporting, a base-model baseline on the same held-out test, a bootstrap
-comparison proving the Platt/isotonic tie, and a recruiter-facing top-candidate
-ranking metric — plus HF Hub publishing so the live demo serves the real model.
+### 6. Model audit (`Notebooks/06`)
 
-![Production model comparison](Results/05_production_v2_fig1.png)
+Building a model is not the same as knowing whether to trust it. The audit notebook loads the
+published model and asks four questions the training notebooks cannot:
 
-### Fine-tuned model vs Claude (a frontier LLM)
+- **Is it beating TF-IDF?** Every comparison so far has been neural against neural. A
+  109M-parameter model that ties a bag-of-words baseline is overhead rather than a result.
+- **Does the score move when only the candidate's name changes?** Each held-out resume is
+  re-scored with 18 substituted names drawn from the standard resume-audit literature, holding
+  every skill, date, and employer constant.
+- **Does the job description preprocessing actually help?** Asserted throughout this
+  repository, never tested until now.
+- **Where is calibration weakest?** A reliability diagram, because mean absolute error is an
+  average and averages hide shape.
 
-Does a small in-domain model actually beat a frontier LLM at this task? Claude Opus 4.5
-scored the **same 106 held-out pairs** through the production prompt (schema-constrained
-JSON, one call, zero-shot):
+It runs on CPU in about 15 minutes.
 
-| Engine (106-pair external final test) | Spearman ↑ | MAE ↓ |
+The audit currently reports results for the model on the HuggingFace Hub, which is an older
+checkpoint than `models/seed43`. Its model-dependent findings are quarantined in
+`results_summary.json` until the current model is published and the audit is re-run. Its
+baselines (TF-IDF 0.5657, word overlap 0.5592, base MPNet 0.6246) do not depend on the
+published model and are valid.
+
+### Comparison against a frontier LLM
+
+Claude Opus 4.5 scored the same 106 held-out pairs through the production prompt, with
+schema-constrained JSON, one call per pair, zero-shot:
+
+| Engine | Spearman | MAE |
 |---|---|---|
-| **MPNet + Platt calibration (production)** | **0.8645** | **0.1021** |
-| Claude Opus 4.5 — calibrated (isotonic) | 0.7084 | 0.1613 |
-| Claude Opus 4.5 — raw | 0.7117 | 0.2518 |
+| **MPNet + Platt calibration (production)** | **0.834** | **0.1163** |
+| Claude Opus 4.5, calibrated (isotonic) | 0.7084 | 0.1613 |
+| Claude Opus 4.5, raw | 0.7117 | 0.2518 |
 
-Claude is a competent *ranker* but a poorly *calibrated* one — it compresses strong
-matches (a 0.9-label pair scores ~30/100). Fitting the same Platt/isotonic calibrator on
-the calibration half closes most of that absolute-error gap (0.25 → 0.16 MAE) but cannot
-change the ranking, so the purpose-built model still leads on both. (Matched single-call
-setup — no extended thinking — so this is a floor for Claude, not its ceiling.) Reproduce
-with `scripts/claude_benchmark.py` + `scripts/calibrate.py`.
+Claude is a competent ranker but a poorly calibrated one: it compresses strong matches, and a
+pair labelled 0.9 can score around 30 out of 100. Fitting the same calibrator on the
+calibration half closes most of the absolute-error gap, from 0.25 to 0.16, but calibration is
+monotonic and cannot change the ranking. The purpose-built model leads on both.
+
+This was a matched single-call setup with no extended thinking, so it represents a floor for
+Claude rather than its ceiling. Reproduce with `scripts/claude_benchmark.py` and
+`scripts/calibrate.py`.
 
 ---
 
-## Architecture
+## A defect worth documenting
 
-Three engines score the same resume/JD pair, and the app is explicit about which one has
-evidence behind it. The fine-tuned model is ~420 MB of PyTorch — far past a Vercel
-serverless function — so it lives in its own service and Next.js calls it over HTTP.
+The first two production runs published a model that did not match its published metrics.
 
-```
-  Browser ── Next.js (Vercel) ──┬── lib/providers/claude.ts      → Anthropic Messages API
-                                ├── lib/providers/openrouter.ts  → free open-weights model
-                                └── lib/providers/finetuned.ts   → FastAPI service (HF Space)
-                                                                      │
-                                     Supabase (Postgres)              └─ fine-tuned MPNet
-                                     shareable results                   + Platt calibrator
-                                                                         reusing src/ + app/
-```
+`SentenceTransformer.fit()` defaults to `save_best_model=True`, so `output_path` receives the
+best checkpoint by *validation* score, while the in-memory model after training is the final
+epoch. Notebook 05 calibrated and measured the in-memory model, then published the directory.
+Different weights. The calibrator had been fitted to one model's cosine distribution and was
+applied to another, so the published mean absolute error came out at 0.33 against a reported
+0.12.
 
-The three are **not** interchangeable, and the UI says so rather than pretending: the
-fine-tuned model is an embedding scorer — it produces a calibrated score and a
-requirement-by-requirement gap, but it cannot write prose. Each provider declares its
-capabilities and the UI renders only what that engine can actually do.
+Nothing raised an error. The audit produced entirely plausible numbers about a model nobody
+had evaluated.
+
+Three guards now make this class of failure loud:
+
+1. Notebook 05 reloads the saved checkpoint before calibrating, so the calibrator, the
+   metrics, and the artifact are the same object.
+2. Notebook 05's export cell re-downloads the published model and reports whether the
+   publication actually happened.
+3. Notebook 06 aborts if the published model's raw Spearman disagrees with
+   `production_results.json` by more than 0.01, and `scripts/build_demo_data.py` refuses to
+   bundle predictions that fail the same check.
+
+`src/train.py` had the identical defect and has been fixed.
+
+---
 
 ## Repository map
 
 ```
-Notebooks/           Research notebooks 01–06, in story order
-Data/                Training + external test CSVs
-Results/             Extracted charts + results_summary.json
-models/              platt_calibrator.pkl (production calibrator; weights on HF Hub)
-src/                 text_utils, augment, train — the model pipeline
-app/explain.py       Skill-gap analysis (shared by the scoring service)
-service/             FastAPI scoring service — serves the fine-tuned model over HTTP
-web/                 Next.js 16 app (App Router, TypeScript, Tailwind 4)
-supabase/schema.sql  Table + row-level security for shareable results
-tests/, service/     Offline pytest suites
-web/**/*.test.ts     Offline vitest suites
+Notebooks/
+  01 to 04            The study at 500 pairs from 150 postings, exploratory and unseeded
+  05_production       The model that ships: 815 pairs, 3 seeds, CIs, publishes to the Hub
+  06_model_audit      Bias audit, non-neural baselines, ablations. CPU only, no training
+Data/                 Training and external test CSVs
+docs/DATA_CARD.md     Provenance, label schema, and the limits of what this data supports
+Results/              Charts, per-pair predictions, and results_summary.json
+models/               Calibrators. Model weights live on the HuggingFace Hub
+src/                  text_utils, augment, train: the model pipeline
+app/explain.py        Skill-gap analysis, shared by the scoring service
+service/              FastAPI scoring service
+web/                  Next.js demo page
+scripts/              Claude benchmark, calibration, demo data pipeline
+tests/, service/      Offline pytest suites
 ```
 
-## Dataset provenance (honest version)
+Notebooks 01 to 04 are exploratory: single training runs, unseeded, reporting an internal test
+drawn from the same postings used for training. That was enough to find the calibration gap,
+show the internal test set was misleading, and rule out four fixes. Notebook 05 is the
+production run and is held to a different standard. The split is deliberate and stated in each
+notebook.
 
-Job descriptions come from ~1,150 real LinkedIn postings (scraped, then curated to 305
-unique JDs across 14 industries and multiple seniority levels). Resume texts and match
-scores were **synthetically generated and hand-curated** against those real JDs, with five
-labeled match types (`strong`, `good`, `partial`, `hard_negative`, `weak`) — hard negatives
-are keyword-dense but wrong-role pairs (e.g., QA-automation Python vs backend Python).
-The external test set (212 pairs, 53 JDs) has zero JD overlap with training and includes
-deliberately hard edge cases: career changers, overqualified candidates, keyword-stuffed
-mismatches. Synthetic labels are the main limitation — scores reflect the labeling rubric,
-not recruiter ground truth. That's on the roadmap.
+## Dataset provenance
+
+The job descriptions are real. The resumes and the match scores are not.
+
+Job descriptions come from roughly 1,150 scraped LinkedIn postings, curated to 255 unique
+training postings and 53 external ones across 14 industries and 4 seniority levels. Resume
+text and match scores were synthetically generated and hand-curated against those real
+postings, with five labelled match types: `strong`, `good`, `partial`, `hard_negative`, and
+`weak`. Hard negatives are keyword-dense but wrong-role pairs, such as QA-automation Python
+against backend Python, split into three subtypes.
+
+The external test set (212 pairs, 53 postings, exactly 4 candidates each) has zero JD overlap
+with training, asserted in code. It is deliberately harder than the training set: half of it
+is hard negatives and weak matches, including career changers, overqualified candidates, and
+keyword-stuffed mismatches.
+
+Synthetic labels are the binding limitation. Every metric here measures fidelity to a labelling
+rubric rather than to recruiter judgement, and no amount of methodological rigour changes that.
+Full accounting in [`docs/DATA_CARD.md`](docs/DATA_CARD.md).
 
 ## Reproducing the model
 
-The fine-tuned weights are not stored in this repo (they're ~420 MB). Regenerate them:
+The fine-tuned weights are not stored in this repository. Regenerate them:
 
 ```bash
 pip install -r requirements.txt
-python src/train.py                       # full pipeline: train + calibrate + evaluate
-python src/train.py --push-to-hub USER/resume-jd-matcher-mpnet   # optionally publish
+python src/train.py
+python src/train.py --push-to-hub USER/resume-jd-matcher-mpnet
 ```
 
-- **GPU (recommended):** ~1 h on a free Colab T4 — open a notebook, clone the repo, run the same command.
-- **CPU:** works, but plan for an overnight run.
+On a free Colab T4 this takes roughly an hour. On CPU, plan for an overnight run.
 
-`train.py` prints the final external-test table and writes `models/` (model + calibrators)
-plus `Results/training_metrics.json`.
+`train.py` prints the final external-test table and writes `models/` (calibrators) plus
+`Results/training_metrics.json`. It reloads the saved checkpoint before calibrating, so the
+numbers it prints describe the weights it saved.
 
-## Running it locally
+For the full multi-seed protocol with confidence intervals and precision@1, run
+`Notebooks/05_production.ipynb` instead.
 
-Two processes: the scoring service (Python) and the web app (Next.js).
+## Running the demo page
+
+Two processes: the scoring service and the web app.
 
 ```bash
-# 1. Scoring service — serves the fine-tuned model
+# 1. Scoring service
 pip install -r service/requirements.txt
 uvicorn service.main:app --reload --port 8000
 
-# 2. Web app
+# 2. Demo page
 cd web
 npm install
-cp .env.example .env.local     # fill in the keys you want; see below
-npm run dev                    # http://localhost:3000
+cp .env.example .env.local
+npm run dev
 ```
 
-**You only need the keys for the engines you want to use.** Each is read lazily, so the
-app runs fine with just one configured — selecting an unconfigured engine returns a
-`CONFIG_ERROR` naming exactly which variable to set, instead of the whole app refusing to
-boot.
+The page reads `web/public/benchmark.json`, generated by `python scripts/build_demo_data.py`.
+Without the scoring service configured, live scoring is disabled and the precomputed benchmark
+still works, which is the part with evidence behind it.
 
-| Variable | For |
+| Variable | Purpose |
 |---|---|
-| `ANTHROPIC_API_KEY` | Claude engine. `ANTHROPIC_MODEL` defaults to `claude-opus-4-8`; set `claude-sonnet-5` for ~3× cheaper inference |
-| `OPENROUTER_API_KEY` + `OPENROUTER_MODEL` | Free open-weights engine. **No default model** — free slugs rotate and get retired, so pick a current one from [openrouter.ai/models?q=free](https://openrouter.ai/models?q=free) |
-| `SCORING_SERVICE_URL` | The Python service (`http://localhost:8000` locally) |
-| `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` | Optional. Without them the app still analyzes — it just can't offer shareable links |
+| `SCORING_SERVICE_URL` | The Python service. `http://localhost:8000` locally |
+| `ANTHROPIC_API_KEY` | Optional. Adds Claude to the live comparison |
 
 ## Running the tests
 
 ```bash
-pytest                # 61 tests — src/, app/, and the scoring service
-cd web && npm test    # 43 tests — providers, API routes, persistence
+pytest                # 61 tests: src/, app/, and the scoring service
+cd web && npm test    # 19 tests: providers, benchmark maths, ATS keywords
 ```
 
-**Every one of these is offline.** No test downloads a model, calls the Anthropic or
-OpenRouter API, or touches a database — the sentence-transformer is replaced by a stub
-encoder with hand-chosen vectors, and the LLM providers by a stubbed transport. That
-means assertions about similarity bands (`covered` / `partial` / `missing`), calibration,
-and JSON repair are exact rather than dependent on a live model's mood, and the suite
-costs nothing to run.
+Every one of these is offline. No test downloads a model, calls an API, or touches a network.
+The sentence-transformer is replaced by a stub encoder with hand-chosen vectors, so assertions
+about similarity bands, calibration, and JSON repair are exact rather than dependent on a live
+model.
 
-The tests that matter most are the ones guarding invariants that would fail *silently*:
+The tests that matter most guard invariants that would otherwise fail silently:
 
-- the fine-tuned calibrator is **never** applied to base MPNet (it maps the fine-tuned
-  model's cosine distribution; on base MPNet it would produce confident nonsense)
-- inputs get the same 350-word preprocessing the model was **trained** under
-- stored analyses are **private by default**, and a shared-link read only ever returns
-  rows that were explicitly shared
+- the fine-tuned calibrator is never applied to base MPNet, where it would produce confident
+  nonsense
+- inputs receive the same 350-word preprocessing the model was trained under
 - one engine failing in comparison mode never blanks out the others
-
-Each of those was mutation-tested: the bug was injected, the suite was confirmed to catch
-it, and the source restored.
-
-## Deploying
-
-| Piece | Where | Notes |
-|---|---|---|
-| Web app | Vercel | Set the project root to `web/`. Add the env vars above. |
-| Scoring service | HuggingFace Space (Docker SDK) | The root `Dockerfile` builds it. Point `SCORING_SERVICE_URL` at the Space. Free Spaces sleep when idle — the first request pays a cold start, which the UI surfaces honestly rather than hanging on a spinner. |
-| Database | Supabase | Run `supabase/schema.sql`. Row-level security is on; the service-role key stays server-side. |
 
 ## What I learned
 
-- **External validation is non-negotiable.** A held-out split from the same JD pool still
-  flattered the cross-encoder by 1.5 Spearman points (0.89 vs −0.61).
-- **In low-data regimes, smaller + calibrated beats bigger + expressive.** Every
-  anti-overfitting trick helped the cross-encoder; none closed the gap.
-- **Calibration is a product feature.** Users see the score, not the ranking — a model
-  that says "78 % match" for a 16 % match loses trust even when its ordering is right.
+- **External validation is not optional.** A held-out split from the same posting pool still
+  flattered the cross-encoder by 1.5 Spearman points.
+- **In low-data regimes, smaller and calibrated beats bigger and more expressive.** Every
+  anti-overfitting technique helped the cross-encoder. None closed the gap.
+- **Calibration is a product feature.** Users see the score, not the ranking. A model that
+  reports 78% for a 16% match loses trust even when its ordering is correct.
+- **Measure the artifact you ship, not the one in memory.** A default argument silently
+  decoupled the published model from the published metrics, and only a cross-check between two
+  notebooks caught it.
 
-## Limitations & next steps
+## Limitations and next steps
 
-- Synthetic match labels → collect recruiter-labeled pairs for a gold test set
-- PDF resume parsing in the app (currently paste-text)
-- Score confidence intervals (fold-spread was a useful signal in the K-fold experiment)
-- ONNX / quantized export for CPU-cheap serving
+- Synthetic match labels. Collecting recruiter-labelled pairs for a gold test set is the
+  highest-value addition to this project.
+- 106 final-test pairs produce wide confidence intervals. Differences smaller than the interval
+  width are not meaningful.
+- E5 outperformed MPNet in one run of notebook 02 and was not carried forward. It deserves a
+  multi-seed re-test.
+- ONNX or quantized export for cheaper CPU serving.
 
 ---
 
-*David Lepighe · Apr–May 2026 (research), Jul 2026 (app) · [github.com/dlepighe1](https://github.com/dlepighe1)*
+*David Lepighe, April to July 2026. [github.com/dlepighe1](https://github.com/dlepighe1)*
