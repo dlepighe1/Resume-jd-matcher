@@ -40,97 +40,97 @@
   "per_seed": [
     {
       "seed": 42,
-      "train_minutes": 22.3,
+      "train_minutes": 23.7,
       "raw": {
-        "spearman": 0.8538,
-        "mae": 0.1469
+        "spearman": 0.86,
+        "mae": 0.1382
       },
       "platt": {
-        "spearman": 0.8538,
-        "mae": 0.1051
+        "spearman": 0.86,
+        "mae": 0.1034
       },
       "isotonic": {
-        "spearman": 0.8561,
-        "mae": 0.1002
+        "spearman": 0.8593,
+        "mae": 0.1004
       },
       "model_path": "models/seed42"
     },
     {
       "seed": 43,
-      "train_minutes": 22.0,
+      "train_minutes": 23.7,
       "raw": {
-        "spearman": 0.834,
-        "mae": 0.1561
+        "spearman": 0.8163,
+        "mae": 0.1797
       },
       "platt": {
-        "spearman": 0.834,
-        "mae": 0.1163
+        "spearman": 0.8163,
+        "mae": 0.127
       },
       "isotonic": {
-        "spearman": 0.8343,
-        "mae": 0.1077
+        "spearman": 0.8079,
+        "mae": 0.1222
       },
       "model_path": "models/seed43"
     },
     {
       "seed": 44,
-      "train_minutes": 22.2,
+      "train_minutes": 24.1,
       "raw": {
-        "spearman": 0.8186,
-        "mae": 0.1554
+        "spearman": 0.8055,
+        "mae": 0.1637
       },
       "platt": {
-        "spearman": 0.8186,
-        "mae": 0.1221
+        "spearman": 0.8055,
+        "mae": 0.1279
       },
       "isotonic": {
-        "spearman": 0.8106,
-        "mae": 0.1201
+        "spearman": 0.8145,
+        "mae": 0.1153
       },
       "model_path": "models/seed44"
     }
   ],
   "aggregate": {
     "raw": {
-      "spearman_mean": 0.8355,
-      "spearman_std": 0.0144,
-      "mae_mean": 0.1528,
-      "mae_std": 0.0042
+      "spearman_mean": 0.8273,
+      "spearman_std": 0.0236,
+      "mae_mean": 0.1605,
+      "mae_std": 0.0171
     },
     "platt": {
-      "spearman_mean": 0.8355,
-      "spearman_std": 0.0144,
-      "mae_mean": 0.1145,
-      "mae_std": 0.0071
+      "spearman_mean": 0.8273,
+      "spearman_std": 0.0236,
+      "mae_mean": 0.1194,
+      "mae_std": 0.0113
     },
     "isotonic": {
-      "spearman_mean": 0.8337,
-      "spearman_std": 0.0186,
-      "mae_mean": 0.1093,
-      "mae_std": 0.0082
+      "spearman_mean": 0.8272,
+      "spearman_std": 0.0228,
+      "mae_mean": 0.1126,
+      "mae_std": 0.0091
     }
   },
   "production_seed": 43,
   "production": {
     "raw": {
-      "spearman": 0.834,
-      "mae": 0.1561
+      "spearman": 0.8163,
+      "mae": 0.1797
     },
     "platt": {
-      "spearman": 0.834,
-      "mae": 0.1163
+      "spearman": 0.8163,
+      "mae": 0.127
     },
     "isotonic": {
-      "spearman": 0.8343,
-      "mae": 0.1077
+      "spearman": 0.8079,
+      "mae": 0.1222
     },
     "spearman_ci95": [
-      0.7642,
-      0.8764
+      0.7396,
+      0.8638
     ],
     "mae_ci95": [
-      0.0983,
-      0.1351
+      0.108,
+      0.1462
     ]
   },
   "cross_encoder_distilroberta": {
@@ -146,18 +146,19 @@
     ]
   },
   "calibrator_bootstrap": {
-    "mae_diff_point": 0.0086,
+    "mae_diff_point": 0.0048,
     "ci95": [
-      -0.0005,
-      0.0177
+      -0.0037,
+      0.014
     ],
-    "p_platt_better": 0.034,
+    "p_platt_better": 0.129,
     "verdict": "tied"
   },
   "ranking": {
     "groups": 53,
-    "hits": 50,
-    "precision_at_1": 0.9434,
-    "mean_shortfall_when_wrong": 0.1517
-  }
+    "hits": 45,
+    "precision_at_1": 0.8491,
+    "mean_shortfall_when_wrong": 0.2459
+  },
+  "published_verified": true
 }
