@@ -9,20 +9,25 @@ and a single demo page for inspecting the results. It is not a product.
 
 **Current model:** `all-mpnet-base-v2` fine-tuned with a combined ranking and calibration
 objective, plus Platt score calibration. Measured across three seeds on 106 fully held-out
-pairs from 53 unseen job postings:
+pairs from unseen job postings:
 
 | Metric | Value |
 |---|---|
-| Spearman correlation | **0.8355 ± 0.0144** |
-| Mean absolute error | **0.1145 ± 0.0071** |
-| Production seed (43) | 0.834 Spearman, 95% CI [0.764, 0.876] |
-| Base model before fine-tuning | 0.6246, so fine-tuning contributes **+0.211 Spearman** |
-| Precision@1 across 53 unseen postings | **94.3%** against a 25% random baseline |
+| Spearman correlation | **0.8273 ± 0.0236** across three seeds |
+| Mean absolute error | **0.1126 ± 0.0091** |
+| Production seed (43) | 0.8163 Spearman, 95% CI [0.740, 0.864] |
+| Base model before fine-tuning | 0.6246, so fine-tuning contributes **+0.192 Spearman**, 95% CI [+0.108, +0.292] |
+| Precision@1 across 53 unseen postings | **84.9%** (45/53), Wilson 95% CI [73%, 92%], against a 25% random baseline |
 
-> **Status note.** These numbers describe `models/seed43`, the checkpoint saved by the most
-> recent production run. That checkpoint has not yet been published to the HuggingFace Hub,
-> so the live demo cannot serve it and the audit notebook has not been re-run against it.
-> See [Reproducing the model](#reproducing-the-model).
+Every gap above is tested rather than asserted. A paired bootstrap that resamples postings
+rather than pairs separates the model from base MPNet, from TF-IDF, from word overlap, and
+from Claude Opus 4.5. See [`Results/significance.json`](Results/significance.json).
+
+> **Verified.** The published checkpoint was re-downloaded and re-scored before these numbers
+> were accepted: it reproduces the run's raw Spearman of 0.8163. Two earlier runs published a
+> model that did not match its own metrics, which is why this check now exists and why
+> `published_verified` is recorded in the results file. See
+> [A defect worth documenting](#a-defect-worth-documenting).
 
 | | |
 |---|---|
@@ -31,8 +36,9 @@ pairs from 53 unseen job postings:
 | Data card | [`docs/DATA_CARD.md`](docs/DATA_CARD.md) |
 | Scope of this repo | [`docs/RESEARCH_SPEC.md`](docs/RESEARCH_SPEC.md) |
 | Product spec (separate repo) | [`docs/SAAS_SPEC.md`](docs/SAAS_SPEC.md) |
+| Significance testing | [`Results/significance.json`](Results/significance.json), `python scripts/significance.py` |
 | Reproduce | `python src/train.py` |
-| Tests | 80, all offline: no model downloads, no API calls |
+| Tests | 165, all offline: no model downloads, no API calls |
 
 ---
 
@@ -108,18 +114,24 @@ Results on the 106-pair final test:
 
 | Model | Spearman | MAE |
 |---|---|---|
-| **MPNet + Platt calibration (production)** | **0.834** | **0.1163** |
-| MPNet + isotonic calibration | 0.8343 | 0.1077 |
-| MPNet raw (combined loss) | 0.834 | 0.1561 |
+| **MPNet + Platt calibration (production)** | **0.8163** | **0.1270** |
+| MPNet + isotonic calibration | 0.8079 | 0.1222 |
+| MPNet raw (combined loss) | 0.8163 | 0.1797 |
 | DistilRoBERTa cross-encoder (augmented, regularized) | 0.7586 | 0.1939 |
 | Base MPNet, no fine-tuning | 0.6246 | 0.2138 |
 
+Raw and Platt share a Spearman because Platt scaling is a strictly increasing sigmoid and
+Spearman depends only on ranks. Calibration cannot move the ranking, which is the point: the
+ordering was already good and only the score values were compressed. MAE falls from 0.180 to
+0.127, a 29% reduction. Isotonic differs slightly because its flat segments create ties, and
+ties do change ranks.
+
 The two calibrators are statistically tied. A 2,000-resample bootstrap on the difference in
-mean absolute error gives a 95% interval of [-0.0005, +0.0177], which straddles zero. Platt
+mean absolute error gives a 95% interval of [-0.0037, +0.0140], which straddles zero. Platt
 ships on a robustness argument rather than a metric win: a two-parameter sigmoid cannot
 overfit a 106-pair calibration split, while an isotonic step function can.
 
-Across three seeds the model spans 0.8186 to 0.8538 Spearman. That spread is a property of
+Across three seeds the model spans 0.8055 to 0.8600 Spearman. That spread is a property of
 training at this data scale and is the reason single-run numbers are not quoted.
 
 ### 6. Model audit (`Notebooks/06`)
@@ -137,13 +149,34 @@ published model and asks four questions the training notebooks cannot:
 - **Where is calibration weakest?** A reliability diagram, because mean absolute error is an
   average and averages hide shape.
 
-It runs on CPU in about 15 minutes.
+It runs on CPU in about 15 minutes, and its guard cell refuses to proceed if the model it
+loads disagrees with `production_results.json`.
 
-The audit currently reports results for the model on the HuggingFace Hub, which is an older
-checkpoint than `models/seed43`. Its model-dependent findings are quarantined in
-`results_summary.json` until the current model is published and the audit is re-run. Its
-baselines (TF-IDF 0.5657, word overlap 0.5592, base MPNet 0.6246) do not depend on the
-published model and are valid.
+**Is it beating word counting?** Yes, and by more than noise. On the identical held-out pairs:
+word overlap 0.5593, TF-IDF 0.5656, base MPNet 0.6246, fine-tuned 0.8163. The gap over TF-IDF
+is +0.251 with a 95% interval of [+0.124, +0.404].
+
+**Does the name matter?** Marginally, and the honest answer needs both halves. Substituting 18
+names across six demographic groups while holding every skill, date, and employer constant
+moves group means by 0.0054 and flips 3 of 106 verdict bands. The direction of the largest gap
+is consistent enough to be statistically detectable, and its size is roughly a twentieth of the
+model's own average error. This tests names only; school, address, and employment gaps also
+correlate with demographics and this audit would not catch sensitivity to those.
+
+**Does the preprocessing help?** *This ablation failed to test anything, and is reported
+anyway.* Raw job descriptions and naively truncated ones scored identically to four decimal
+places, because every external posting already falls under the 350-word cut and the naive arm
+never truncated. Against raw text the production smart truncation is 0.0021 worse on Spearman
+and 0.0017 better on MAE, which is noise. Settling this needs a posting set that is actually
+long enough to truncate, and a model trained on raw text to separate the method from
+train/serve consistency.
+
+**Where is calibration weakest?** Expected calibration error is 0.031, but the error has a
+direction. Strong matches carry a bias of -0.166, meaning every one of the 27 strong pairs is
+underscored, and weak matches +0.091. The model compresses toward the middle of the scale and
+never predicts above 0.852 while labels reach 0.945. Ranking is unaffected, which is why
+precision@1 holds at 84.9% while absolute error on strong pairs is the worst of any group.
+The practical consequence: read the output as a ranking signal, not as a percentage fit.
 
 ### Comparison against a frontier LLM
 
@@ -152,18 +185,26 @@ schema-constrained JSON, one call per pair, zero-shot:
 
 | Engine | Spearman | MAE |
 |---|---|---|
-| **MPNet + Platt calibration (production)** | **0.834** | **0.1163** |
+| **MPNet + Platt calibration (production)** | **0.8163** | **0.1270** |
 | Claude Opus 4.5, calibrated (isotonic) | 0.7084 | 0.1613 |
 | Claude Opus 4.5, raw | 0.7117 | 0.2518 |
 
 Claude is a competent ranker but a poorly calibrated one: it compresses strong matches, and a
 pair labelled 0.9 can score around 30 out of 100. Fitting the same calibrator on the
 calibration half closes most of the absolute-error gap, from 0.25 to 0.16, but calibration is
-monotonic and cannot change the ranking. The purpose-built model leads on both.
+monotonic and cannot change the ranking.
 
-This was a matched single-call setup with no extended thinking, so it represents a floor for
-Claude rather than its ceiling. Reproduce with `scripts/claude_benchmark.py` and
-`scripts/calibrate.py`.
+The ranking gap survives resampling: +0.105 Spearman, 95% CI [+0.020, +0.212], p = 0.012 under
+a paired bootstrap over postings. That is a real difference, and the lower bound sitting close
+to zero is part of the result. The defensible claim is that a 109M-parameter model fine-tuned
+on 815 in-domain pairs outranks a frontier model *on this task and this test set*, not in
+general.
+
+The setup is a matched floor rather than Claude's ceiling: zero-shot, one call per pair, no
+extended thinking (this Bedrock model rejects it), and no few-shot examples, while the
+fine-tuned model saw 815 labelled pairs and Claude saw none. The question it answers is whether
+task-specific fine-tuning earns its keep, not which model is stronger. Reproduce with
+`scripts/claude_benchmark.py` and `scripts/calibrate.py`.
 
 ---
 
@@ -210,7 +251,7 @@ src/                  text_utils, augment, train: the model pipeline
 app/explain.py        Skill-gap analysis, shared by the scoring service
 service/              FastAPI scoring service
 web/                  Next.js demo page
-scripts/              Claude benchmark, calibration, demo data pipeline
+scripts/              Claude benchmark, calibration, significance testing, demo data pipeline
 tests/, service/      Offline pytest suites
 ```
 
@@ -287,8 +328,8 @@ still works, which is the part with evidence behind it.
 ## Running the tests
 
 ```bash
-pytest                # 61 tests: src/, app/, and the scoring service
-cd web && npm test    # 19 tests: providers, benchmark maths, ATS keywords
+pytest                # 102 tests: src/, app/, scripts/, and the scoring service
+cd web && npm test    #  63 tests: providers, benchmark maths, ATS keywords
 ```
 
 Every one of these is offline. No test downloads a model, calls an API, or touches a network.
@@ -298,10 +339,17 @@ model.
 
 The tests that matter most guard invariants that would otherwise fail silently:
 
-- the fine-tuned calibrator is never applied to base MPNet, where it would produce confident
-  nonsense
-- inputs receive the same 350-word preprocessing the model was trained under
-- one engine failing in comparison mode never blanks out the others
+- **Published numbers still match their artifacts.** `tests/test_results_consistency.py`
+  compares every figure in `results_summary.json` against the JSON the notebooks wrote. This
+  exists because the summary had drifted twice, and a stale number is indistinguishable from a
+  fresh one by inspection.
+- **The statistics are checked against closed-form references**, not against another call of
+  the same code. Wilson intervals are compared with published values, and the bootstrap is run
+  on data whose answer is known by construction.
+- The fine-tuned calibrator is never applied to base MPNet, where it would produce confident
+  nonsense.
+- Inputs receive the same 350-word preprocessing the model was trained under.
+- One engine failing in comparison mode never blanks out the others.
 
 ## What I learned
 
@@ -314,13 +362,35 @@ The tests that matter most guard invariants that would otherwise fail silently:
 - **Measure the artifact you ship, not the one in memory.** A default argument silently
   decoupled the published model from the published metrics, and only a cross-check between two
   notebooks caught it.
+- **Two point estimates are not a comparison.** "0.82 against 0.71" says nothing on 106 pairs
+  until it is resampled. Doing that properly also meant resampling postings rather than pairs,
+  because four candidates drawn from one posting are not four independent observations.
+- **Report the ablations that failed to test anything.** The preprocessing comparison produced
+  two identical numbers, which is a result about the test set rather than about the method.
+  Deleting it would have left a claim standing with nothing behind it.
 
 ## Limitations and next steps
 
-- Synthetic match labels. Collecting recruiter-labelled pairs for a gold test set is the
-  highest-value addition to this project.
-- 106 final-test pairs produce wide confidence intervals. Differences smaller than the interval
-  width are not meaningful.
+Ordered by how much they constrain the conclusions.
+
+- **Synthetic match labels.** Every metric measures fidelity to a labelling rubric rather than
+  to recruiter judgement. Collecting recruiter-labelled pairs for a gold test set is the
+  highest-value addition to this project, and no amount of methodological rigour substitutes
+  for it.
+- **The score compresses toward the middle.** Strong matches are underscored by 0.166 on
+  average and weak ones overscored by 0.091. The ordering is trustworthy; the absolute number
+  is not a percentage fit. Fixing this needs either a loss that penalises the compression
+  directly or a calibrator with more freedom at the ends than 106 pairs can safely support.
+- **The calibration split is not posting-disjoint.** The 212 external pairs were split
+  stratified by match type, so 47 of the 50 final-test postings also contributed candidates to
+  the calibration half. Ranking metrics cannot be affected, because calibration is monotonic,
+  and the measured effect on MAE is 0.0006 under leave-one-posting-out refitting. A
+  posting-grouped split is still the cleaner design and is the first change for any re-run.
+- **106 final-test pairs produce wide intervals.** Differences smaller than the interval width
+  are not meaningful, which is why `Results/significance.json` exists rather than a table of
+  point estimates.
+- **The preprocessing ablation is uninformative** on this test set, since no posting in it is
+  long enough to truncate. See notebook 06.
 - E5 outperformed MPNet in one run of notebook 02 and was not carried forward. It deserves a
   multi-seed re-test.
 - ONNX or quantized export for cheaper CPU serving.

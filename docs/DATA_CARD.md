@@ -121,6 +121,23 @@ All splits are stratified by `match_type` at `random_state=42`. The external spl
 fixed independently of the training seed, so all three training seeds in notebook 05 are
 evaluated on identical test pairs.
 
+**The external split is stratified, not grouped.** Stratifying by `match_type` scatters each
+posting's four candidates across the calibration and test halves, so 47 of the 50 postings in
+the final test also contribute a candidate to the calibration half. This does not touch the
+training boundary: JD overlap between training and the external set is zero and asserted in
+code, so the model never saw any of these postings.
+
+What it does affect is bounded and was measured rather than argued:
+
+- **Ranking metrics cannot be affected.** Spearman and precision@1 are invariant under any
+  monotone transform, and the calibrator is monotone by construction.
+- **Absolute error could be.** Refitting Platt with one posting held out at a time gives an
+  MAE of 0.1276 against the reported 0.1270, a difference of 0.0006. See
+  `scripts/significance.py` and `Results/significance.json`.
+
+A posting-grouped split (`GroupShuffleSplit` on the JD) is the cleaner design and is the first
+change to make on any re-run.
+
 Notebooks 01–04 report an **internal** test set drawn from the same postings used for
 training. Those numbers are diagnostic only. Notebook 03 exists specifically to show how far
 they can mislead (a cross-encoder at 0.89 internal scored −0.61 external).

@@ -1,7 +1,7 @@
 {
-  "project": "ResumeAI — Resume / Job-Description Matching",
-  "timeline": "2026-04-28 to 2026-05-05 (studies 01-04), 2026-07 (production run)",
-  "source_of_truth": "Executed notebook outputs. Every number below is transcribed from a cell output in Notebooks/, never from memory.",
+  "project": "ResumeAI: resume and job-description matching",
+  "timeline": "2026-04-28 to 2026-05-05 (studies 01-04), 2026-07 (production run, audit, and significance testing)",
+  "source_of_truth": "Executed notebook outputs. Every number below is transcribed from a cell output in Notebooks/ or computed by a script in scripts/ from a committed artifact, never from memory. tests/test_significance.py and tests/test_build_demo_data.py assert that the derived files still agree with the artifacts they came from.",
   "_note_counts_verified": "Unique-JD counts were measured directly from the CSVs on 2026-07-27. Earlier versions of this file reported 200 and 305; the true values are 150 and 255. See docs/DATA_CARD.md.",
   "data": {
     "training_v1": {
@@ -40,7 +40,7 @@
       "weak"
     ],
     "industries": 14,
-    "labels": "synthetic, rubric-derived — see docs/DATA_CARD.md"
+    "labels": "synthetic, rubric-derived. See docs/DATA_CARD.md"
   },
   "notebook_01_baselines_internal_test_50_pairs": {
     "_scope": "500-pair training set; internal test drawn from the same 150 postings as training. Diagnostic only.",
@@ -62,7 +62,7 @@
       "base_mae": 0.2411,
       "ft_mae": 0.3149
     },
-    "finding": "Fine-tuning roughly doubled MPNet's ranking quality and made every model's MAE worse — the calibration gap, which notebook 02 investigates."
+    "finding": "Fine-tuning roughly doubled MPNet's ranking quality and made every model's MAE worse. That contradiction is the calibration gap, which notebook 02 investigates."
   },
   "notebook_02_architecture_internal_test_50_pairs": {
     "_scope": "500-pair training set, internal test. See the caveat cell in the notebook: training is unseeded and this run drew an unlucky MPNet.",
@@ -111,7 +111,7 @@
       "DeBERTa-v3 cross-encoder": {
         "spearman": null,
         "mae": 0.4677,
-        "note": "Spearman undefined — near-constant predictions; the classifier head never learned to discriminate"
+        "note": "Spearman undefined because predictions were near-constant; the classifier head never learned to discriminate"
       }
     },
     "external_test_212_pairs": {
@@ -132,7 +132,7 @@
         "mae": 0.5427
       }
     },
-    "headline_finding": "The RoBERTa cross-encoder won the internal test (0.8917 vs 0.8516) and inverted on unseen postings (-0.6122) — a 1.50 Spearman swing. 125M parameters on 400 examples is ~312k parameters per example; it memorized the training postings. The calibrated bi-encoder lost only 0.076 Spearman across the same transfer.",
+    "headline_finding": "The RoBERTa cross-encoder won the internal test (0.8917 vs 0.8516) and inverted on unseen postings (-0.6122), a 1.50 Spearman swing. 125M parameters on 400 examples is ~312k parameters per example; it memorized the training postings. The calibrated bi-encoder lost only 0.076 Spearman across the same transfer.",
     "hybrid_note": "The 'Hybrid' rows in this notebook duplicate the cross-encoder rows exactly: at 1:1 scoring the hybrid delegates to the cross-encoder and inherits its failure completely."
   },
   "notebook_04_overfitting_fixes_external_test_212_pairs": {
@@ -160,9 +160,9 @@
     "conclusion": "Every fix helped (-0.35 -> +0.51 external Spearman) and none beat the simple calibrated bi-encoder at 0.77. At this data scale, cross-encoder capacity is a liability."
   },
   "notebook_05_production": {
-    "_status": "VALID. Re-run 2026-07-29 with the save_best_model fix; every number below describes models/seed43, the checkpoint that was saved.",
-    "_fix": "SentenceTransformer.fit() defaults to save_best_model=True, so output_path holds the best-by-validation checkpoint while the in-memory model is the final epoch. The first run calibrated and measured the in-memory model and published the directory — different weights, mismatched calibrator, and a silently wrong audit. Notebook 05 and src/train.py now reload from output_path before calibrating, so the calibrator, the metrics and the artifact are the same object.",
-    "run": "3 seeds (42/43/44), 815 pairs / 255 postings, combined CoSENT + CosineSimilarity loss, 22 min/seed on a T4",
+    "_status": "VERIFIED. Re-run 2026-07-31. Before any number below was accepted, the export cell re-downloaded the published checkpoint from the Hub and confirmed it reproduces this run's raw Spearman of 0.8163. published_verified is true in Results/production_results.json.",
+    "_fix": "SentenceTransformer.fit() defaults to save_best_model=True, so output_path holds the best-by-validation checkpoint while the in-memory model is the final epoch. An earlier run calibrated and measured the in-memory model and published the directory: different weights, mismatched calibrator, and a silently wrong audit. Notebook 05 and src/train.py now reload from output_path before calibrating, so the calibrator, the metrics and the artifact are the same object.",
+    "run": "3 seeds (42/43/44), 815 pairs / 255 postings, combined CoSENT + CosineSimilarity loss, ~24 min/seed on a T4",
     "baseline_base_mpnet": {
       "spearman": 0.6246,
       "mae": 0.2138,
@@ -177,65 +177,66 @@
     },
     "per_seed_platt": {
       "42": {
-        "spearman": 0.8538,
-        "mae": 0.1051
+        "spearman": 0.86,
+        "mae": 0.1034
       },
       "43": {
-        "spearman": 0.834,
-        "mae": 0.1163
+        "spearman": 0.8163,
+        "mae": 0.127
       },
       "44": {
-        "spearman": 0.8186,
-        "mae": 0.1221
+        "spearman": 0.8055,
+        "mae": 0.1279
       }
     },
     "aggregate": {
       "raw": {
-        "spearman_mean": 0.8355,
-        "spearman_std": 0.0144,
-        "mae_mean": 0.1528,
-        "mae_std": 0.0042
+        "spearman_mean": 0.8273,
+        "spearman_std": 0.0236,
+        "mae_mean": 0.1605,
+        "mae_std": 0.0171
       },
       "platt": {
-        "spearman_mean": 0.8355,
-        "spearman_std": 0.0144,
-        "mae_mean": 0.1145,
-        "mae_std": 0.0071
+        "spearman_mean": 0.8273,
+        "spearman_std": 0.0236,
+        "mae_mean": 0.1194,
+        "mae_std": 0.0113
       },
       "isotonic": {
-        "spearman_mean": 0.8337,
-        "spearman_std": 0.0186,
-        "mae_mean": 0.1093,
-        "mae_std": 0.0082
+        "spearman_mean": 0.8272,
+        "spearman_std": 0.0228,
+        "mae_mean": 0.1126,
+        "mae_std": 0.0091
       }
     },
+    "_why_platt_and_raw_share_a_spearman": "Platt scaling is sigmoid(a*x+b) with a>0, a strictly increasing map. Spearman depends only on ranks, so calibration cannot move it. That is the point: the ranking was already good and only the score values were compressed. Isotonic differs slightly because its flat segments create ties, and ties do change ranks.",
     "production_seed": 43,
     "production_MPNet_plus_platt": {
       "raw": {
-        "spearman": 0.834,
-        "mae": 0.1561
+        "spearman": 0.8163,
+        "mae": 0.1797
       },
       "platt": {
-        "spearman": 0.834,
-        "mae": 0.1163
+        "spearman": 0.8163,
+        "mae": 0.127
       },
       "isotonic": {
-        "spearman": 0.8343,
-        "mae": 0.1077
+        "spearman": 0.8079,
+        "mae": 0.1222
       },
       "spearman_ci95": [
-        0.7642,
-        0.8764
+        0.7396,
+        0.8638
       ],
       "mae_ci95": [
-        0.0983,
-        0.1351
+        0.108,
+        0.1462
       ]
     },
     "fine_tuning_delta": {
-      "spearman": 0.2109,
-      "mae": -0.0993,
-      "note": "vs base all-mpnet-base-v2 on the identical 106 held-out pairs"
+      "spearman": 0.1917,
+      "mae": -0.0868,
+      "note": "vs base all-mpnet-base-v2 on the identical 106 held-out pairs. Tested rather than asserted: the paired cluster bootstrap in Results/significance.json puts the Spearman gain at +0.1918, 95% CI [+0.108, +0.292], p < 0.0001."
     },
     "cross_encoder_distilroberta": {
       "spearman": 0.7586,
@@ -250,28 +251,35 @@
       ]
     },
     "calibrator_bootstrap": {
-      "mae_diff_point": 0.0086,
+      "mae_diff_point": 0.0048,
       "ci95": [
-        -0.0005,
-        0.0177
+        -0.0037,
+        0.014
       ],
-      "p_platt_better": 0.034,
-      "verdict": "tied"
+      "p_platt_better": 0.129,
+      "verdict": "tied",
+      "note": "Isotonic and Platt are indistinguishable on this test set. Platt ships because a 2-parameter sigmoid cannot overfit a 106-pair calibration split, not because it measured better."
     },
     "precision_at_1": {
       "groups": 53,
-      "hits": 50,
-      "precision_at_1": 0.9434,
-      "mean_shortfall_when_wrong": 0.1517,
+      "hits": 45,
+      "precision_at_1": 0.8491,
+      "wilson_ci95": [
+        0.7295,
+        0.9215
+      ],
+      "mean_shortfall_when_wrong": 0.2459,
       "random_baseline": 0.25,
-      "note": "53 unseen postings, 4 candidates each; ranking is calibration-invariant so raw cosine is used"
+      "exact_binomial_p_vs_baseline": 7.6e-20,
+      "note": "53 unseen postings, 4 candidates each. Ranking is calibration-invariant so raw cosine is used. Interval is Wilson rather than normal-approximation because the proportion is close to 1.",
+      "_scope": "Covers the full 212-pair external set, not the 106-pair final test half that every other metric here uses. That is sound because ranking within a posting cannot be affected by a monotone calibrator, so including the calibration half contaminates nothing, but it is a different denominator and should not be quoted as if it came from the same 106 pairs."
     },
-    "_seed_spread": "0.8186-0.8538 Spearman across three seeds of an identical recipe. Reported as mean +/- std because notebook 02 showed a single run of this pipeline swings ~0.28 at this data scale.",
-    "_not_yet_published": "The publish cell has not been executed, so the Hub still serves a 2026-07-27 checkpoint. Until it runs, notebook 06 audits the wrong weights and scripts/build_demo_data.py refuses to bundle the fine-tuned engine."
+    "_seed_spread": "0.8055-0.86 Spearman across three seeds of an identical recipe. Reported as mean +/- std because notebook 02 showed a single run of this pipeline swings ~0.28 at this data scale.",
+    "_calibration_split_caveat": "The 212 external pairs were split into calibration and final test stratified by match_type, which scattered each posting's four candidates across both halves: 47 of the 50 postings in the final test also appear in the calibration split. Training-to-external JD overlap is still zero and asserted in code, so the model never saw these postings. The calibrator did see sibling pairs. Spearman and precision@1 are invariant to monotone calibration and so cannot be affected at all; only MAE could be. Measured rather than argued: refitting Platt leaving out one posting at a time gives MAE 0.1276 against the reported 0.1270, a difference of 0.0006. See Results/significance.json. A posting-grouped split is the cleaner design and is the first change to make on any re-run."
   },
   "claude_opus_4_5_external_final_test_106_pairs": {
     "model": "us.anthropic.claude-opus-4-5-20251101-v1:0 (Amazon Bedrock)",
-    "setup": "Same 106-pair external final test as the fine-tuned model. Production system+user prompt, schema-constrained JSON, one call per pair, zero-shot, no extended thinking (this Bedrock model rejects it) — a matched floor, not Claude's ceiling.",
+    "setup": "Same 106-pair external final test as the fine-tuned model. Production system+user prompt, schema-constrained JSON, one call per pair, zero-shot, no extended thinking (this Bedrock model rejects it). A matched floor, not Claude's ceiling.",
     "raw": {
       "spearman": 0.7117,
       "mae": 0.2518
@@ -284,38 +292,173 @@
       "spearman": 0.7084,
       "mae": 0.1613
     },
-    "takeaway": "Calibration is monotonic, so Spearman is unchanged while MAE drops from 0.25 to 0.16 — most of Claude's absolute-error gap was calibration, not judgment. Reproduce: scripts/claude_benchmark.py + scripts/calibrate.py.",
-    "_comparison_note": "Compare against the fine-tuned model's numbers in notebook_05_production above, on the identical 106 pairs."
+    "takeaway": "Calibration is monotonic, so Spearman is unchanged while MAE drops from 0.25 to 0.16. Most of Claude's absolute-error gap was calibration, not judgment. Reproduce: scripts/claude_benchmark.py + scripts/calibrate.py.",
+    "_comparison_note": "Compare against the fine-tuned model's numbers in notebook_05_production above, on the identical 106 pairs. The fine-tuned model leads by 0.1047 Spearman, 95% CI [+0.020, +0.212], p = 0.012 under a paired cluster bootstrap. Significant, but the lower bound is close to zero and the honest claim is 'better on this task and this test set', not 'better in general'.",
+    "_fairness_note": "Zero-shot, one call per pair, no extended thinking (this Bedrock model rejects it), no few-shot examples from the training set. That is a matched floor rather than Claude's ceiling: the fine-tuned model saw 815 in-domain labelled pairs and Claude saw none. The comparison answers whether task-specific fine-tuning is worth doing, not which model is stronger.",
+    "_data_completeness": "claude_benchmark_predictions.jsonl holds 199 rows, of which 106 carry a prediction and 93 are rate-limit errors from an abandoned earlier attempt. The 106 successful rows cover the final-test split exactly, so no test pair is missing a Claude score."
   },
   "audit": {
-    "_status": "QUARANTINED — audited the stale Hub checkpoint, not models/seed43.",
-    "_evidence": "The audit measured raw Spearman 0.7891 (cosine range [0.569, 0.890]) — bit-identical across two audit runs while notebook 05's model changed from 0.8173 to 0.8340. The HF repo's lastModified is 2026-07-27, predating both production runs, and platt_calibrator.pkl 404s there. The audit paired a fresh local calibrator with stale Hub weights: the worst possible combination.",
-    "_valid_regardless": {
+    "_status": "VALID. Notebook 06 re-run 2026-07-31 against the verified checkpoint. Its guard cell compared the model's raw Spearman with Results/production_results.json and passed, and its production row (0.8163 / 0.127) reproduces the production seed's Platt numbers exactly.",
+    "_supersedes": "An earlier audit reported production 0.7891 / 0.2876. That run paired a fresh local calibrator with stale Hub weights and described a model nobody had evaluated. It is discarded, not reconciled.",
+    "baseline_ladder": {
+      "_what": "Everything on the identical 106 held-out pairs, cheapest method first.",
+      "jaccard": {
+        "spearman": 0.5593,
+        "mae": null
+      },
+      "tfidf": {
+        "spearman": 0.5656,
+        "mae": null
+      },
       "base_mpnet": {
         "spearman": 0.6246,
         "mae": 0.2138
       },
-      "tfidf": {
-        "spearman": 0.5657,
-        "mae": null,
-        "note": "MAE omitted: TF-IDF cosine is not an estimate of the 0-1 label; only ranking is comparable"
+      "finetuned_platt": {
+        "spearman": 0.8163,
+        "mae": 0.127
       },
-      "jaccard": {
-        "spearman": 0.5592,
-        "mae": null
-      },
-      "_why": "None of these depend on the published fine-tuned model."
+      "_mae_note": "MAE is omitted for TF-IDF and Jaccard. Their similarity was never meant to estimate the 0-1 label, so an absolute error against it measures the scale mismatch rather than the method. Only ranking is comparable.",
+      "_significance": "Every gap above is tested in Results/significance.json with a paired cluster bootstrap. All three are significant at the 5% level."
     },
-    "_withheld_until_rerun": [
-      "name_bias",
-      "preprocessing_ablation",
-      "calibration_ece",
-      "by_match_type",
-      "hard_negative_subtypes"
-    ],
-    "_guards": "Notebook 06 aborts on a >0.01 raw-Spearman disagreement with production_results.json; notebook 05's export cell now re-downloads the Hub model and reports whether the publish actually happened; scripts/build_demo_data.py refuses mismatched predictions (it rejected this run's)."
+    "name_bias": {
+      "_method": "18 first-and-last-name pairs across 6 demographic groups, drawn from the Bertrand & Mullainathan resume-audit design, substituted into each of the 106 test resumes. Everything except the name is held constant.",
+      "group_mean_spread": 0.0054,
+      "mean_per_pair_sd": 0.0031,
+      "max_abs_shift": 0.0385,
+      "verdict_flips": 3,
+      "n_pairs": 106,
+      "largest_gap": {
+        "high": "white_m",
+        "low": "black_f",
+        "wilcoxon_p": 0.0
+      },
+      "_finding": "Statistically detectable and practically negligible, and both halves of that sentence matter. The Wilcoxon p rounds to 0.0 at four places, so the direction of the white_m vs black_f difference is consistent enough to be real. The magnitude is 0.0054 on a 0-1 scale, roughly a twentieth of the model's own 0.127 mean absolute error. 3 of 106 pairs cross a verdict-band boundary on the name alone.",
+      "_limits": "This tests name substitution only. It says nothing about signals correlated with demographics that a real resume carries: school, address, activities, employment gaps, phrasing. A model that is insensitive to names can still be sensitive to those, and this audit would not detect it."
+    },
+    "preprocessing_ablation": {
+      "raw_jd": {
+        "spearman": 0.8184,
+        "mae": 0.1287
+      },
+      "naive_truncate": {
+        "spearman": 0.8184,
+        "mae": 0.1287
+      },
+      "smart_truncate": {
+        "spearman": 0.8163,
+        "mae": 0.127
+      },
+      "_finding": "This ablation did not work and is reported anyway. Raw and naive truncation are identical to four decimal places because every external posting is already under the 350-word cut, so the naive arm is a no-op and the comparison has no truncation in it to measure. Against raw text, the production smart-truncation is 0.0021 worse on Spearman and 0.0017 better on MAE, which is noise.",
+      "_what_it_would_take": "A posting set with a substantial fraction over 350 words, and a model trained on raw JDs to separate the intrinsic benefit of the method from the train/serve consistency benefit. Neither exists here, so no claim is made for smart truncation on this evidence."
+    },
+    "calibration": {
+      "ece": 0.0307,
+      "pred_range": [
+        0.054,
+        0.852
+      ],
+      "true_range": [
+        0.054,
+        0.945
+      ],
+      "_finding": "Expected calibration error is 0.0307, but the prediction range stops at 0.852 while labels reach 0.945. The model never uses the top of the scale."
+    },
+    "by_match_type": {
+      "strong": {
+        "mae": 0.1655,
+        "bias": -0.1655,
+        "n": 27
+      },
+      "good": {
+        "mae": 0.0954,
+        "bias": -0.0241,
+        "n": 14
+      },
+      "partial": {
+        "mae": 0.1629,
+        "bias": 0.0773,
+        "n": 13
+      },
+      "hard_negative": {
+        "mae": 0.0947,
+        "bias": 0.0274,
+        "n": 26
+      },
+      "weak": {
+        "mae": 0.1185,
+        "bias": 0.0905,
+        "n": 26
+      },
+      "_finding": "The clearest limitation in the whole study. Bias on strong matches is -0.1655, meaning every one of the 27 strong pairs is underpredicted, and the error is entirely one-directional (bias equals MAE exactly). Weak pairs are overpredicted by +0.0905. This is range compression surviving calibration: the model pulls toward the middle of the scale.",
+      "_consequence": "Absolute scores understate strong candidates, so the score should not be read as a percentage fit. Ranking is unaffected, which is why precision@1 stays at 0.8491 while MAE on strong pairs is poor, and it is the reason the demo leads with ranking."
+    },
+    "hard_negative_subtypes": {
+      "impressive_irrelevant": {
+        "mae": 0.1465,
+        "n": 30
+      },
+      "keyword_overlap": {
+        "mae": 0.093,
+        "n": 22
+      },
+      "wrong_specialization": {
+        "mae": 0.0882,
+        "n": 19
+      },
+      "_finding": "The model handles the two adversarial cases it was trained for. Resumes that share vocabulary with the posting (0.093) and resumes from an adjacent specialization (0.0882) are both scored better than average. The remaining weakness is the strong-but-irrelevant candidate at 0.1465: a genuinely impressive resume from the wrong field still pulls a higher score than it deserves."
+    },
+    "_guards": "Three, because this failed silently twice. Notebook 06 aborts on a >0.01 raw-Spearman disagreement with production_results.json. Notebook 05's export cell re-downloads the published model and reports whether the publish actually happened. scripts/build_demo_data.py refuses to bundle predictions that disagree with the recorded metrics."
+  },
+  "significance": {
+    "_file": "Results/significance.json",
+    "_method": "Paired cluster bootstrap, 10,000 resamples, seed 42. The resampling unit is the posting, not the pair: the 106 final-test pairs come from 50 postings with 1 to 4 pairs each, and treating correlated pairs as independent would produce intervals that are too narrow. Both engines score the identical resample, so the difference is paired.",
+    "production_vs_base_mpnet": {
+      "spearman_diff": 0.1918,
+      "ci95": [
+        0.108,
+        0.292
+      ],
+      "p": 0.0,
+      "significant": true
+    },
+    "production_vs_claude_opus_4_5": {
+      "spearman_diff": 0.1047,
+      "ci95": [
+        0.02,
+        0.212
+      ],
+      "p": 0.012,
+      "significant": true,
+      "_note": "The headline comparison. A 109M-parameter bi-encoder fine-tuned on 815 pairs outranks a frontier model on this task by more than sampling noise, though the lower bound of +0.02 shows the margin is not comfortable."
+    },
+    "production_vs_tfidf": {
+      "spearman_diff": 0.2508,
+      "ci95": [
+        0.124,
+        0.404
+      ],
+      "p": 0.0,
+      "significant": true
+    },
+    "production_vs_jaccard": {
+      "spearman_diff": 0.2572,
+      "ci95": [
+        0.119,
+        0.421
+      ],
+      "p": 0.0,
+      "significant": true
+    },
+    "grouped_calibration_check": {
+      "reported_mae": 0.127,
+      "leave_one_posting_out_mae": 0.1276,
+      "difference": 0.0006,
+      "_what_it_answers": "Whether the calibration split sharing postings with the final test inflated MAE. It did not, by 0.0006."
+    }
   },
   "charts": {
+    "Results/model_audit.png": "Notebook 06: baseline ladder, name-substitution spread, reliability diagram, per-match-type error",
     "Results/03_external_validation_fig1.png": "Architecture comparison on the internal test (Spearman, MAE, speed, scatter)",
     "Results/04_overfitting_fixes_fig1.png": "Four anti-overfitting fixes on the 212-pair external test",
     "Results/05_production_v2_fig1_LEGACY.png": "Superseded. From the pre-multi-seed production run; kept for provenance only",

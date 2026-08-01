@@ -8,11 +8,23 @@ product: an HTTP scoring service. The product repository consumes that service a
 everything else. Neither repository imports the other's source.
 
 **Status of the model dependency.** The scoring model is a fine-tuned sentence-transformer
-measured at 0.8355 ± 0.0144 Spearman and 0.1145 ± 0.0071 mean absolute error across three
-seeds on 106 held-out pairs from 53 unseen job postings. Its precision@1 across those
-postings is 94.3% against a 25% random baseline. Read `docs/DATA_CARD.md` in this repository
-before writing any user-facing copy about what the score means: the labels are synthetic, and
-several claims a product would like to make are not supported.
+measured at 0.8273 ± 0.0236 Spearman and 0.1126 ± 0.0091 mean absolute error across three
+seeds on 106 held-out pairs from unseen job postings. Its precision@1 across 53 unseen
+postings is 84.9%, with a 95% interval of 73% to 92%, against a 25% random baseline.
+
+Two constraints on product copy follow from the evaluation, and both are load-bearing:
+
+1. **The score is a ranking signal, not a percentage fit.** The model underscores strong
+   matches by roughly 0.17 and overscores weak ones by roughly 0.09, and it never predicts
+   above 0.85. Ordering candidates or postings by score is supported. Displaying "you are an
+   82% match" is not, and no amount of UI framing repairs it.
+2. **The labels are synthetic.** Every metric measures fidelity to a scoring rubric rather
+   than to recruiter judgement.
+
+Read `docs/DATA_CARD.md` and the limitations section of `README.md` in this repository before
+writing any user-facing copy about what the score means. Treat these figures as a snapshot:
+read the live numbers from `Results/results_summary.json` rather than copying them into
+product code or marketing, which is exactly how this paragraph went stale once already.
 
 ---
 
