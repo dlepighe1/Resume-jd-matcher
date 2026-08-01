@@ -184,8 +184,18 @@ def main():
     if demo_path.exists():
         demo = json.loads(demo_path.read_text(encoding="utf-8"))
         model_id = demo.get("model_id")
-        audit = {k: demo.get(k) for k in
-                 ("calibration", "name_bias", "preprocessing", "by_match_type") if demo.get(k)}
+        AUDIT_KEYS = ("calibration", "name_bias", "preprocessing", "by_match_type",
+                      "hard_negative_subtypes")
+        audit = {k: demo.get(k) for k in AUDIT_KEYS if demo.get(k)}
+
+        # demo_pairs.json carries most of the audit, but not every section. Fill the rest
+        # from the audit artifact itself, which is where notebook 06 writes all of them.
+        audit_path = REPO / "Results" / "audit_results.json"
+        if audit_path.exists():
+            full = json.loads(audit_path.read_text(encoding="utf-8"))
+            for k in AUDIT_KEYS:
+                if k not in audit and full.get(k):
+                    audit[k] = full[k]
         by_id = {int(p["id"]): p["preds"] for p in demo["pairs"]}
         missing = [i for i in test_ids if i not in by_id]
         if missing:
@@ -274,6 +284,20 @@ def main():
                       if e.get("available") and preds[e["id"]][i] is not None},
         })
 
+    # Which differences between engines survive resampling. Written by scripts/significance.py
+    # rather than recomputed here, so the page and the study cite one number.
+    significance = None
+    sig_path = REPO / "Results" / "significance.json"
+    if sig_path.exists():
+        significance = json.loads(sig_path.read_text(encoding="utf-8"))
+        if audit is None:
+            # The fine-tuned predictions were rejected above, and every comparison in
+            # significance.json is against those predictions.
+            significance = None
+            notes.append("Significance results withheld: they describe the rejected model.")
+    else:
+        notes.append("No Results/significance.json; run python scripts/significance.py.")
+
     bundle = {
         "meta": {
             "generated": date.today().isoformat(),
@@ -281,9 +305,12 @@ def main():
             "nPairs": len(pairs),
             "nPostings": int(test_df["jd"].nunique()),
             "split": (
-                "External final test: 106 pairs from job postings with zero overlap with "
-                "training. Calibrators were fitted on a separate 106-pair split, so nothing "
-                "here was used to fit anything."
+                "External final test: 106 pairs from job postings with zero overlap with the "
+                "training set, asserted in code. No pair here was used to fit the calibrator. "
+                "The split is stratified by match type rather than grouped by posting, so 47 "
+                "of these 50 postings do contribute other candidates to the calibration half. "
+                "Ranking metrics are unaffected by construction, and the effect on absolute "
+                "error was measured at 0.0006."
             ),
             "notes": notes,
             "regenerate": "python scripts/build_demo_data.py",
@@ -292,6 +319,7 @@ def main():
         "metrics": metrics,
         "pairs": pairs,
         "audit": audit,
+        "significance": significance,
         "matchTypes": sorted(test_df["match_type"].dropna().unique().tolist()),
         "industries": sorted(test_df["industry"].dropna().unique().tolist()),
     }

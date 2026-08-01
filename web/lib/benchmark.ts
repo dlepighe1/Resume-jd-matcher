@@ -46,6 +46,40 @@ export interface BenchmarkPair {
   preds: Record<string, number>;
 }
 
+/** One engine-vs-engine comparison from the paired cluster bootstrap. */
+export interface Comparison {
+  metric: "spearman" | "mae";
+  a: string;
+  b: string;
+  a_value: number;
+  b_value: number;
+  difference: number;
+  ci95: [number, number];
+  p_value: number;
+  significant: boolean;
+}
+
+export interface Significance {
+  n_pairs: number;
+  n_postings: number;
+  resamples: number;
+  comparisons: Comparison[];
+  precision_at_1: {
+    hits: number;
+    postings: number;
+    precision_at_1: number;
+    wilson_ci95: [number, number];
+    random_baseline: number;
+    exact_binomial_p_vs_baseline: number;
+  };
+  grouped_calibration_check: {
+    reported_mae?: number;
+    leave_one_posting_out_mae?: number;
+    difference?: number;
+    skipped?: string;
+  };
+}
+
 export interface Benchmark {
   meta: {
     generated: string;
@@ -65,11 +99,15 @@ export interface Benchmark {
       group_mean_spread: number;
       verdict_flips: number;
       n_pairs: number;
+      max_abs_shift?: number;
+      largest_gap?: { high: string; low: string; wilcoxon_p: number };
       groups: Record<string, { mean_score: number; delta_vs_overall: number }>;
     };
     preprocessing?: Record<string, { spearman: number; mae: number }>;
     by_match_type?: Record<string, { mae: number; bias: number; n: number }>;
+    hard_negative_subtypes?: Record<string, { mae: number; n: number }>;
   } | null;
+  significance: Significance | null;
   matchTypes: string[];
   industries: string[];
 }

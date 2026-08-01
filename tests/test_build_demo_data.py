@@ -162,6 +162,32 @@ def test_tolerance_absorbs_float_noise_but_not_a_real_difference(tmp_path, monke
     assert not any(e["id"] == "finetuned_raw" and e.get("available") for e in rejected["engines"])
 
 
+def test_rejection_also_withholds_the_significance_results(tmp_path, monkeypatch):
+    """Every comparison in significance.json is against the fine-tuned predictions. If those
+    are rejected, publishing 'beats Claude, p=0.012' beside them would launder the rejected
+    model back onto the page through a different section."""
+    repo = _fixture_repo(tmp_path, reported_spearman=0.72)
+    (repo / "Results" / "significance.json").write_text(
+        json.dumps({"comparisons": [{"b": "claude", "metric": "spearman", "p_value": 0.01}]}),
+        encoding="utf-8")
+
+    bundle = _run_against(repo, monkeypatch)
+
+    assert bundle["significance"] is None
+    assert any("withheld" in note.lower() for note in bundle["meta"]["notes"])
+
+
+def test_significance_is_published_when_the_model_is_accepted(tmp_path, monkeypatch):
+    repo = _fixture_repo(tmp_path, reported_spearman=1.0)
+    (repo / "Results" / "significance.json").write_text(
+        json.dumps({"comparisons": [{"b": "claude", "metric": "spearman", "p_value": 0.01}]}),
+        encoding="utf-8")
+
+    bundle = _run_against(repo, monkeypatch)
+
+    assert bundle["significance"]["comparisons"][0]["b"] == "claude"
+
+
 def test_bundle_omits_mae_for_non_calibrated_baselines(tmp_path, monkeypatch):
     """TF-IDF cosine is a similarity in its own units, not an estimate of the 0-1 label.
     An absolute error against that label would be a meaningless number presented as a

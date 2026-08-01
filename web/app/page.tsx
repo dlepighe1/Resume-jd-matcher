@@ -2,8 +2,10 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import { BenchmarkExplorer } from "@/components/demo/BenchmarkExplorer";
+import { ErrorProfile } from "@/components/demo/ErrorProfile";
 import { LiveScorer } from "@/components/demo/LiveScorer";
 import { Card, Detail, Section, Stat } from "@/components/demo/Section";
+import { SignificanceTable } from "@/components/demo/SignificanceTable";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BANDS, fmt, toSummary, type Benchmark } from "@/lib/benchmark";
 
@@ -37,6 +39,10 @@ export default async function Page() {
   const base = summary?.metrics["base_mpnet"];
   const tfidf = summary?.metrics["tfidf"];
   const audit = summary?.audit;
+  const significance = summary?.significance;
+  const vsClaude = significance?.comparisons.find(
+    (c) => c.b === "claude" && c.metric === "spearman",
+  );
 
   return (
     <main>
@@ -118,13 +124,17 @@ export default async function Page() {
                 <Stat
                   value={fmt(claude.spearman, 2)}
                   label="Claude Opus 4.5"
-                  basis="Same pairs, same calibration procedure"
+                  basis={
+                    vsClaude
+                      ? `Same pairs, same calibration. The gap holds up under resampling (p = ${fmt(vsClaude.p_value, 3)})`
+                      : "Same pairs, same calibration procedure"
+                  }
                 />
               )}
               <Stat
                 value={String(summary.meta.nPostings)}
                 label="Postings in this test set"
-                basis="Drawn from 53 postings with no overlap with training, verified in code"
+                basis="No overlap with the training postings, asserted in code"
               />
             </div>
           )}
@@ -369,9 +379,18 @@ export default async function Page() {
                   <span className="tnum">{audit.name_bias.n_pairs}</span> pairs changed verdict
                   band on the name alone.
                 </p>
+                <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                  That difference is statistically detectable and practically negligible, and
+                  both halves matter. The direction is consistent enough to be real rather than
+                  chance. Its size is roughly a twentieth of the model&rsquo;s own average
+                  error, so it is swamped by ordinary inaccuracy.
+                </p>
                 <p className="mt-2 text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
-                  A small result means the model is not name-sensitive on this test set with
-                  these names. It does not establish that the system is safe to use in hiring.
+                  This tests names only. A resume also carries school, address, activities, and
+                  employment gaps, all of which correlate with demographics. A model
+                  insensitive to names can still be sensitive to those, and this check would
+                  not detect it. A small result here does not establish that the system is safe
+                  to use in hiring.
                 </p>
               </>
             ) : (
@@ -396,8 +415,14 @@ export default async function Page() {
               </li>
               <li>
                 <strong>{summary?.nPairs ?? 106} pairs is a small test set.</strong> The
-                confidence intervals on this page are wide. Two engines separated by less than
-                the interval width are not distinguishable.
+                confidence intervals on this page are wide, and the comparison table above is
+                the only thing entitled to call a gap real.
+              </li>
+              <li>
+                <strong>One preprocessing test failed to test anything.</strong> Comparing
+                smart truncation against naive truncation produced identical numbers, because
+                every posting in this test set already falls under the word limit and the
+                naive arm never truncated. No claim is made for that step on this evidence.
               </li>
               <li>
                 <strong>This is not a screening tool.</strong> It has no notion of context,
@@ -407,6 +432,15 @@ export default async function Page() {
             </ul>
           </Card>
         </div>
+
+        {(significance || audit?.by_match_type) && (
+          <div className="mt-6 grid gap-6">
+            {significance && summary && (
+              <SignificanceTable significance={significance} engines={summary.engines} />
+            )}
+            {audit?.by_match_type && <ErrorProfile audit={audit} />}
+          </div>
+        )}
 
         {summary && (
           <p className="mt-8 text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>

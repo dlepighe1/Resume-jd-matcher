@@ -1,13 +1,13 @@
 {
  "meta": {
-  "generated": "2026-07-30",
+  "generated": "2026-08-01",
   "modelId": "dlepighe1/resume-jd-matcher-mpnet",
   "nPairs": 106,
   "nPostings": 50,
-  "split": "External final test: 106 pairs from job postings with zero overlap with training. Calibrators were fitted on a separate 106-pair split, so nothing here was used to fit anything.",
+  "split": "External final test: 106 pairs from job postings with zero overlap with the training set, asserted in code. No pair here was used to fit the calibrator. The split is stratified by match type rather than grouped by posting, so 47 of these 50 postings do contribute other candidates to the calibration half. Ranking metrics are unaffected by construction, and the effect on absolute error was measured at 0.0006.",
   "notes": [
    "Claude's calibrator is isotonic regression fitted on the 106-pair calibration split and applied to the untouched test split, the same protocol the fine-tuned model gets, so the comparison is calibrated-vs-calibrated.",
-   "REJECTED the fine-tuned predictions: raw Spearman in demo_pairs.json is 0.7889 but Results/production_results.json reports 0.8340 (0.0451 apart). The audit ran against different weights than notebook 05 measured, so those predictions, and every audit finding derived from them, describe a model that was never evaluated. Re-run notebook 05 (it now reloads the saved checkpoint before calibrating), let its publish cell finish, then re-run notebook 06. Baselines below (base MPNet, TF-IDF, Jaccard) do not depend on the published model and are kept."
+   "Verified: the audited model reproduces notebook 05's raw Spearman (0.8164 vs 0.8163)."
   ],
   "regenerate": "python scripts/build_demo_data.py"
  },
@@ -19,7 +19,7 @@
    "kind": "calibrated",
    "blurb": "The production model. Fine-tuned on 815 resume/JD pairs, then Platt-calibrated on held-out postings so the number means what it says.",
    "plain": "The model this project built and ships. Its score is calibrated, so it is meant to be read as a percentage.",
-   "available": false
+   "available": true
   },
   {
    "id": "finetuned_raw",
@@ -28,7 +28,7 @@
    "kind": "uncalibrated",
    "blurb": "The same model before calibration. Ranks identically, calibration is monotonic, but the absolute numbers are compressed.",
    "plain": "The same model before the step that makes its output readable as a percentage. It orders candidates just as well; only the number itself is off.",
-   "available": false
+   "available": true
   },
   {
    "id": "base_mpnet",
@@ -77,6 +77,24 @@
   }
  ],
  "metrics": {
+  "finetuned_calibrated": {
+   "spearman": 0.8164,
+   "mae": 0.127,
+   "spearman_ci95": [
+    0.7396,
+    0.8639
+   ],
+   "n": 106
+  },
+  "finetuned_raw": {
+   "spearman": 0.8164,
+   "mae": 0.1797,
+   "spearman_ci95": [
+    0.7396,
+    0.8639
+   ],
+   "n": 106
+  },
   "base_mpnet": {
    "spearman": 0.6246,
    "mae": 0.2138,
@@ -136,6 +154,8 @@
    "jdLevel": "mid",
    "jdPosition": "DevOps Engineer - Azure",
    "preds": {
+    "finetuned_calibrated": 0.397,
+    "finetuned_raw": 0.5414,
     "base_mpnet": 0.6143,
     "claude_calibrated": 0.6674,
     "claude_raw": 0.28,
@@ -153,6 +173,8 @@
    "jdLevel": "lead",
    "jdPosition": "Director & Counsel, Small Business Card Products",
    "preds": {
+    "finetuned_calibrated": 0.6492,
+    "finetuned_raw": 0.6929,
     "base_mpnet": 0.5289,
     "claude_calibrated": 0.645,
     "claude_raw": 0.22,
@@ -170,6 +192,8 @@
    "jdLevel": "senior",
    "jdPosition": "Business Development Representative",
    "preds": {
+    "finetuned_calibrated": 0.7405,
+    "finetuned_raw": 0.7564,
     "base_mpnet": 0.5487,
     "claude_calibrated": 0.8132,
     "claude_raw": 0.35,
@@ -187,6 +211,8 @@
    "jdLevel": "mid",
    "jdPosition": "Technical Product Owner",
    "preds": {
+    "finetuned_calibrated": 0.4675,
+    "finetuned_raw": 0.5836,
     "base_mpnet": 0.509,
     "claude_calibrated": 0.6674,
     "claude_raw": 0.28,
@@ -204,6 +230,8 @@
    "jdLevel": "senior",
    "jdPosition": "Senior Analyst-Product Management",
    "preds": {
+    "finetuned_calibrated": 0.2767,
+    "finetuned_raw": 0.4619,
     "base_mpnet": 0.3564,
     "claude_calibrated": 0.8132,
     "claude_raw": 0.36,
@@ -221,6 +249,8 @@
    "jdLevel": "lead",
    "jdPosition": "Principal Engineer - Generative AI for Cyber Security Architecture",
    "preds": {
+    "finetuned_calibrated": 0.4829,
+    "finetuned_raw": 0.5927,
     "base_mpnet": 0.4298,
     "claude_calibrated": 0.8132,
     "claude_raw": 0.38,
@@ -238,6 +268,8 @@
    "jdLevel": "mid",
    "jdPosition": "Accessibility Designer",
    "preds": {
+    "finetuned_calibrated": 0.1732,
+    "finetuned_raw": 0.3735,
     "base_mpnet": 0.3033,
     "claude_calibrated": 0.1529,
     "claude_raw": 0.05,
@@ -255,6 +287,8 @@
    "jdLevel": "mid",
    "jdPosition": "Software Engineer",
    "preds": {
+    "finetuned_calibrated": 0.2316,
+    "finetuned_raw": 0.4269,
     "base_mpnet": 0.3058,
     "claude_calibrated": 0.2136,
     "claude_raw": 0.12,
@@ -272,6 +306,8 @@
    "jdLevel": "entry",
    "jdPosition": "Associate Information Security Analyst",
    "preds": {
+    "finetuned_calibrated": 0.3259,
+    "finetuned_raw": 0.4962,
     "base_mpnet": 0.3299,
     "claude_calibrated": 0.2136,
     "claude_raw": 0.12,
@@ -289,6 +325,8 @@
    "jdLevel": "mid",
    "jdPosition": "Contract - Salesforce Administrator (Remote, Argentina; Brazil; Chile; Colombia; Costa Rica; Mexico)",
    "preds": {
+    "finetuned_calibrated": 0.3586,
+    "finetuned_raw": 0.5175,
     "base_mpnet": 0.3458,
     "claude_calibrated": 0.1855,
     "claude_raw": 0.08,
@@ -306,6 +344,8 @@
    "jdLevel": "senior",
    "jdPosition": "Senior Cloud Security Engineer",
    "preds": {
+    "finetuned_calibrated": 0.7211,
+    "finetuned_raw": 0.7419,
     "base_mpnet": 0.6397,
     "claude_calibrated": 0.8132,
     "claude_raw": 0.32,
@@ -323,6 +363,8 @@
    "jdLevel": "lead",
    "jdPosition": "Head of Content Design",
    "preds": {
+    "finetuned_calibrated": 0.7483,
+    "finetuned_raw": 0.7624,
     "base_mpnet": 0.6345,
     "claude_calibrated": 0.8132,
     "claude_raw": 0.38,
@@ -340,6 +382,8 @@
    "jdLevel": "entry",
    "jdPosition": "Junior In-House Counsel",
    "preds": {
+    "finetuned_calibrated": 0.7766,
+    "finetuned_raw": 0.7853,
     "base_mpnet": 0.5207,
     "claude_calibrated": 0.6674,
     "claude_raw": 0.28,
@@ -357,6 +401,8 @@
    "jdLevel": "mid",
    "jdPosition": "Healthcare Analytics Manager",
    "preds": {
+    "finetuned_calibrated": 0.7904,
+    "finetuned_raw": 0.7973,
     "base_mpnet": 0.6913,
     "claude_calibrated": 0.8132,
     "claude_raw": 0.48,
@@ -374,6 +420,8 @@
    "jdLevel": "lead",
    "jdPosition": "VP of Clinical Operations",
    "preds": {
+    "finetuned_calibrated": 0.8002,
+    "finetuned_raw": 0.8061,
     "base_mpnet": 0.7182,
     "claude_calibrated": 0.8132,
     "claude_raw": 0.35,
@@ -391,6 +439,8 @@
    "jdLevel": "lead",
    "jdPosition": "Director, Human Resources Partner Team",
    "preds": {
+    "finetuned_calibrated": 0.716,
+    "finetuned_raw": 0.7383,
     "base_mpnet": 0.5417,
     "claude_calibrated": 0.6674,
     "claude_raw": 0.28,
@@ -408,6 +458,8 @@
    "jdLevel": "senior",
    "jdPosition": "Senior Software Engineer",
    "preds": {
+    "finetuned_calibrated": 0.7167,
+    "finetuned_raw": 0.7387,
     "base_mpnet": 0.6044,
     "claude_calibrated": 0.8132,
     "claude_raw": 0.32,
@@ -425,6 +477,8 @@
    "jdLevel": "entry",
    "jdPosition": "Lead AI Consultant",
    "preds": {
+    "finetuned_calibrated": 0.6005,
+    "finetuned_raw": 0.6624,
     "base_mpnet": 0.5131,
     "claude_calibrated": 0.6674,
     "claude_raw": 0.29,
@@ -442,6 +496,8 @@
    "jdLevel": "entry",
    "jdPosition": "Junior Cloud Operations Engineer",
    "preds": {
+    "finetuned_calibrated": 0.7367,
+    "finetuned_raw": 0.7535,
     "base_mpnet": 0.7948,
     "claude_calibrated": 0.828,
     "claude_raw": 0.63,
@@ -459,6 +515,8 @@
    "jdLevel": "entry",
    "jdPosition": "Lead AI Consultant",
    "preds": {
+    "finetuned_calibrated": 0.4738,
+    "finetuned_raw": 0.5873,
     "base_mpnet": 0.4913,
     "claude_calibrated": 0.3619,
     "claude_raw": 0.15,
@@ -476,6 +534,8 @@
    "jdLevel": "lead",
    "jdPosition": "Staff Product Manager, SIEM",
    "preds": {
+    "finetuned_calibrated": 0.4012,
+    "finetuned_raw": 0.544,
     "base_mpnet": 0.4739,
     "claude_calibrated": 0.1529,
     "claude_raw": 0.04,
@@ -493,6 +553,8 @@
    "jdLevel": "mid",
    "jdPosition": "Process Engineer",
    "preds": {
+    "finetuned_calibrated": 0.7832,
+    "finetuned_raw": 0.7909,
     "base_mpnet": 0.6321,
     "claude_calibrated": 0.8132,
     "claude_raw": 0.42,
@@ -510,6 +572,8 @@
    "jdLevel": "lead",
    "jdPosition": "Principal Engineer - Generative AI for Cyber Security Architecture",
    "preds": {
+    "finetuned_calibrated": 0.2508,
+    "finetuned_raw": 0.4422,
     "base_mpnet": 0.4893,
     "claude_calibrated": 0.1855,
     "claude_raw": 0.08,
@@ -527,6 +591,8 @@
    "jdLevel": "entry",
    "jdPosition": "Associate Medical Science Liaison",
    "preds": {
+    "finetuned_calibrated": 0.3201,
+    "finetuned_raw": 0.4923,
     "base_mpnet": 0.444,
     "claude_calibrated": 0.1855,
     "claude_raw": 0.08,
@@ -544,6 +610,8 @@
    "jdLevel": "senior",
    "jdPosition": "Sr. Counsel, Tesla Insurance Services",
    "preds": {
+    "finetuned_calibrated": 0.834,
+    "finetuned_raw": 0.8393,
     "base_mpnet": 0.4671,
     "claude_calibrated": 0.6674,
     "claude_raw": 0.28,
@@ -561,6 +629,8 @@
    "jdLevel": "senior",
    "jdPosition": "Floor Lead / Budtender",
    "preds": {
+    "finetuned_calibrated": 0.3899,
+    "finetuned_raw": 0.5371,
     "base_mpnet": 0.4129,
     "claude_calibrated": 0.645,
     "claude_raw": 0.24,
@@ -578,6 +648,8 @@
    "jdLevel": "mid",
    "jdPosition": "Healthcare Analytics Manager",
    "preds": {
+    "finetuned_calibrated": 0.5078,
+    "finetuned_raw": 0.6072,
     "base_mpnet": 0.6352,
     "claude_calibrated": 0.8132,
     "claude_raw": 0.38,
@@ -595,6 +667,8 @@
    "jdLevel": "senior",
    "jdPosition": "Senior Cloud Security Engineer",
    "preds": {
+    "finetuned_calibrated": 0.0538,
+    "finetuned_raw": 0.1824,
     "base_mpnet": 0.2252,
     "claude_calibrated": 0.1529,
     "claude_raw": 0.05,
@@ -612,6 +686,8 @@
    "jdLevel": "entry",
    "jdPosition": "Junior In-House Counsel",
    "preds": {
+    "finetuned_calibrated": 0.1361,
+    "finetuned_raw": 0.3317,
     "base_mpnet": 0.2876,
     "claude_calibrated": 0.1529,
     "claude_raw": 0.05,
@@ -629,6 +705,8 @@
    "jdLevel": "mid",
    "jdPosition": "Detection Engineer",
    "preds": {
+    "finetuned_calibrated": 0.2459,
+    "finetuned_raw": 0.4384,
     "base_mpnet": 0.4463,
     "claude_calibrated": 0.3619,
     "claude_raw": 0.18,
@@ -646,6 +724,8 @@
    "jdLevel": "entry",
    "jdPosition": "Capital Markets Analyst/Associate",
    "preds": {
+    "finetuned_calibrated": 0.3918,
+    "finetuned_raw": 0.5382,
     "base_mpnet": 0.3699,
     "claude_calibrated": 0.3619,
     "claude_raw": 0.18,
@@ -663,6 +743,8 @@
    "jdLevel": "lead",
    "jdPosition": "Principal DevOps Architect",
    "preds": {
+    "finetuned_calibrated": 0.2718,
+    "finetuned_raw": 0.4582,
     "base_mpnet": 0.5914,
     "claude_calibrated": 0.8132,
     "claude_raw": 0.32,
@@ -680,6 +762,8 @@
    "jdLevel": "senior",
    "jdPosition": "Senior, Payroll Administration",
    "preds": {
+    "finetuned_calibrated": 0.7271,
+    "finetuned_raw": 0.7464,
     "base_mpnet": 0.5408,
     "claude_calibrated": 0.645,
     "claude_raw": 0.22,
@@ -697,6 +781,8 @@
    "jdLevel": "entry",
    "jdPosition": "Lead AI Consultant",
    "preds": {
+    "finetuned_calibrated": 0.6702,
+    "finetuned_raw": 0.7067,
     "base_mpnet": 0.5108,
     "claude_calibrated": 0.6674,
     "claude_raw": 0.28,
@@ -714,6 +800,8 @@
    "jdLevel": "senior",
    "jdPosition": "Senior Cloud Security Engineer",
    "preds": {
+    "finetuned_calibrated": 0.1413,
+    "finetuned_raw": 0.3381,
     "base_mpnet": 0.4385,
     "claude_calibrated": 0.3619,
     "claude_raw": 0.18,
@@ -731,6 +819,8 @@
    "jdLevel": "lead",
    "jdPosition": "Director of Assessment & Evaluation",
    "preds": {
+    "finetuned_calibrated": 0.0966,
+    "finetuned_raw": 0.2749,
     "base_mpnet": 0.2739,
     "claude_calibrated": 0.1855,
     "claude_raw": 0.08,
@@ -748,6 +838,8 @@
    "jdLevel": "lead",
    "jdPosition": "Principal Engineer - Generative AI for Cyber Security Architecture",
    "preds": {
+    "finetuned_calibrated": 0.2649,
+    "finetuned_raw": 0.4531,
     "base_mpnet": 0.4128,
     "claude_calibrated": 0.1855,
     "claude_raw": 0.08,
@@ -765,6 +857,8 @@
    "jdLevel": "mid",
    "jdPosition": "Process Engineer",
    "preds": {
+    "finetuned_calibrated": 0.7759,
+    "finetuned_raw": 0.7847,
     "base_mpnet": 0.6348,
     "claude_calibrated": 0.8132,
     "claude_raw": 0.42,
@@ -782,6 +876,8 @@
    "jdLevel": "mid",
    "jdPosition": "Pharma Field Sales - Cardiometabolic Care Specialist - P Chicago East",
    "preds": {
+    "finetuned_calibrated": 0.4849,
+    "finetuned_raw": 0.5938,
     "base_mpnet": 0.4199,
     "claude_calibrated": 0.2136,
     "claude_raw": 0.12,
@@ -799,6 +895,8 @@
    "jdLevel": "entry",
    "jdPosition": "Capital Markets Analyst/Associate",
    "preds": {
+    "finetuned_calibrated": 0.8249,
+    "finetuned_raw": 0.8299,
     "base_mpnet": 0.658,
     "claude_calibrated": 0.645,
     "claude_raw": 0.24,
@@ -816,6 +914,8 @@
    "jdLevel": "lead",
    "jdPosition": "Head of Content Design",
    "preds": {
+    "finetuned_calibrated": 0.1868,
+    "finetuned_raw": 0.387,
     "base_mpnet": 0.4986,
     "claude_calibrated": 0.2136,
     "claude_raw": 0.12,
@@ -833,6 +933,8 @@
    "jdLevel": "lead",
    "jdPosition": "Sr Director, Strategic Communications - Chief Commercial Officer",
    "preds": {
+    "finetuned_calibrated": 0.6578,
+    "finetuned_raw": 0.6985,
     "base_mpnet": 0.5263,
     "claude_calibrated": 0.2136,
     "claude_raw": 0.12,
@@ -850,6 +952,8 @@
    "jdLevel": "senior",
    "jdPosition": "Senior Healthcare Analytics Manager",
    "preds": {
+    "finetuned_calibrated": 0.7492,
+    "finetuned_raw": 0.7631,
     "base_mpnet": 0.6501,
     "claude_calibrated": 0.8132,
     "claude_raw": 0.32,
@@ -867,6 +971,8 @@
    "jdLevel": "senior",
    "jdPosition": "Senior Software Engineer",
    "preds": {
+    "finetuned_calibrated": 0.5718,
+    "finetuned_raw": 0.6451,
     "base_mpnet": 0.5658,
     "claude_calibrated": 0.8132,
     "claude_raw": 0.32,
@@ -884,6 +990,8 @@
    "jdLevel": "entry",
    "jdPosition": "Business Development Representative",
    "preds": {
+    "finetuned_calibrated": 0.433,
+    "finetuned_raw": 0.5631,
     "base_mpnet": 0.5212,
     "claude_calibrated": 0.6674,
     "claude_raw": 0.28,
@@ -901,6 +1009,8 @@
    "jdLevel": "senior",
    "jdPosition": "Senior AI Engineer",
    "preds": {
+    "finetuned_calibrated": 0.7334,
+    "finetuned_raw": 0.751,
     "base_mpnet": 0.6004,
     "claude_calibrated": 0.7403,
     "claude_raw": 0.31,
@@ -918,6 +1028,8 @@
    "jdLevel": "senior",
    "jdPosition": "Senior DevOps Engineer - Kubernetes",
    "preds": {
+    "finetuned_calibrated": 0.7771,
+    "finetuned_raw": 0.7858,
     "base_mpnet": 0.5945,
     "claude_calibrated": 0.6674,
     "claude_raw": 0.28,
@@ -935,6 +1047,8 @@
    "jdLevel": "lead",
    "jdPosition": "VP of Clinical Operations",
    "preds": {
+    "finetuned_calibrated": 0.1385,
+    "finetuned_raw": 0.3347,
     "base_mpnet": 0.3816,
     "claude_calibrated": 0.1529,
     "claude_raw": 0.04,
@@ -952,6 +1066,8 @@
    "jdLevel": "senior",
    "jdPosition": "Senior AI Engineer",
    "preds": {
+    "finetuned_calibrated": 0.6579,
+    "finetuned_raw": 0.6986,
     "base_mpnet": 0.5173,
     "claude_calibrated": 0.8132,
     "claude_raw": 0.42,
@@ -969,6 +1085,8 @@
    "jdLevel": "senior",
    "jdPosition": "Senior Healthcare Analytics Manager",
    "preds": {
+    "finetuned_calibrated": 0.4203,
+    "finetuned_raw": 0.5555,
     "base_mpnet": 0.48,
     "claude_calibrated": 0.3619,
     "claude_raw": 0.18,
@@ -986,6 +1104,8 @@
    "jdLevel": "senior",
    "jdPosition": "Senior Logistics Manager",
    "preds": {
+    "finetuned_calibrated": 0.8331,
+    "finetuned_raw": 0.8384,
     "base_mpnet": 0.7031,
     "claude_calibrated": 0.8132,
     "claude_raw": 0.42,
@@ -1003,6 +1123,8 @@
    "jdLevel": "entry",
    "jdPosition": "Junior Cloud Operations Engineer",
    "preds": {
+    "finetuned_calibrated": 0.064,
+    "finetuned_raw": 0.2095,
     "base_mpnet": 0.2296,
     "claude_calibrated": 0.1855,
     "claude_raw": 0.08,
@@ -1020,6 +1142,8 @@
    "jdLevel": "lead",
    "jdPosition": "VP of Supply Chain",
    "preds": {
+    "finetuned_calibrated": 0.2352,
+    "finetuned_raw": 0.4298,
     "base_mpnet": 0.4644,
     "claude_calibrated": 0.1855,
     "claude_raw": 0.08,
@@ -1037,6 +1161,8 @@
    "jdLevel": "lead",
    "jdPosition": "VP of Clinical Operations",
    "preds": {
+    "finetuned_calibrated": 0.1747,
+    "finetuned_raw": 0.3751,
     "base_mpnet": 0.3096,
     "claude_calibrated": 0.1855,
     "claude_raw": 0.08,
@@ -1054,6 +1180,8 @@
    "jdLevel": "lead",
    "jdPosition": "VP of Supply Chain",
    "preds": {
+    "finetuned_calibrated": 0.2036,
+    "finetuned_raw": 0.4027,
     "base_mpnet": 0.4348,
     "claude_calibrated": 0.1529,
     "claude_raw": 0.05,
@@ -1071,6 +1199,8 @@
    "jdLevel": "entry",
    "jdPosition": "Junior Brand Designer",
    "preds": {
+    "finetuned_calibrated": 0.7529,
+    "finetuned_raw": 0.766,
     "base_mpnet": 0.6926,
     "claude_calibrated": 0.8132,
     "claude_raw": 0.42,
@@ -1088,6 +1218,8 @@
    "jdLevel": "mid",
    "jdPosition": "Detection Engineer",
    "preds": {
+    "finetuned_calibrated": 0.7307,
+    "finetuned_raw": 0.749,
     "base_mpnet": 0.7169,
     "claude_calibrated": 0.8132,
     "claude_raw": 0.38,
@@ -1105,6 +1237,8 @@
    "jdLevel": "lead",
    "jdPosition": "Sr. Principal Software Engineer",
    "preds": {
+    "finetuned_calibrated": 0.5264,
+    "finetuned_raw": 0.6182,
     "base_mpnet": 0.5686,
     "claude_calibrated": 0.6674,
     "claude_raw": 0.29,
@@ -1122,6 +1256,8 @@
    "jdLevel": "lead",
    "jdPosition": "VP of Supply Chain",
    "preds": {
+    "finetuned_calibrated": 0.7793,
+    "finetuned_raw": 0.7877,
     "base_mpnet": 0.6633,
     "claude_calibrated": 0.8132,
     "claude_raw": 0.32,
@@ -1139,6 +1275,8 @@
    "jdLevel": "senior",
    "jdPosition": "Floor Lead / Budtender",
    "preds": {
+    "finetuned_calibrated": 0.1981,
+    "finetuned_raw": 0.3977,
     "base_mpnet": 0.3287,
     "claude_calibrated": 0.2136,
     "claude_raw": 0.12,
@@ -1156,6 +1294,8 @@
    "jdLevel": "senior",
    "jdPosition": "Senior Software Engineer",
    "preds": {
+    "finetuned_calibrated": 0.0722,
+    "finetuned_raw": 0.2283,
     "base_mpnet": 0.2981,
     "claude_calibrated": 0.1855,
     "claude_raw": 0.08,
@@ -1173,6 +1313,8 @@
    "jdLevel": "entry",
    "jdPosition": "Associate Medical Science Liaison",
    "preds": {
+    "finetuned_calibrated": 0.4278,
+    "finetuned_raw": 0.5601,
     "base_mpnet": 0.4394,
     "claude_calibrated": 0.1855,
     "claude_raw": 0.08,
@@ -1190,6 +1332,8 @@
    "jdLevel": "senior",
    "jdPosition": "Senior, Payroll Administration",
    "preds": {
+    "finetuned_calibrated": 0.6571,
+    "finetuned_raw": 0.698,
     "base_mpnet": 0.4809,
     "claude_calibrated": 0.645,
     "claude_raw": 0.22,
@@ -1207,6 +1351,8 @@
    "jdLevel": "senior",
    "jdPosition": "Senior Logistics Manager",
    "preds": {
+    "finetuned_calibrated": 0.7411,
+    "finetuned_raw": 0.7569,
     "base_mpnet": 0.7152,
     "claude_calibrated": 0.8132,
     "claude_raw": 0.32,
@@ -1224,6 +1370,8 @@
    "jdLevel": "mid",
    "jdPosition": "Security Researcher",
    "preds": {
+    "finetuned_calibrated": 0.1606,
+    "finetuned_raw": 0.3603,
     "base_mpnet": 0.3594,
     "claude_calibrated": 0.1855,
     "claude_raw": 0.08,
@@ -1241,6 +1389,8 @@
    "jdLevel": "mid",
    "jdPosition": "Healthcare Analytics Manager",
    "preds": {
+    "finetuned_calibrated": 0.3335,
+    "finetuned_raw": 0.5012,
     "base_mpnet": 0.439,
     "claude_calibrated": 0.3619,
     "claude_raw": 0.18,
@@ -1258,6 +1408,8 @@
    "jdLevel": "mid",
    "jdPosition": "Account Manager eCommerce",
    "preds": {
+    "finetuned_calibrated": 0.4935,
+    "finetuned_raw": 0.5988,
     "base_mpnet": 0.5425,
     "claude_calibrated": 0.8132,
     "claude_raw": 0.39,
@@ -1275,6 +1427,8 @@
    "jdLevel": "senior",
    "jdPosition": "Floor Lead / Budtender",
    "preds": {
+    "finetuned_calibrated": 0.4437,
+    "finetuned_raw": 0.5695,
     "base_mpnet": 0.421,
     "claude_calibrated": 0.2136,
     "claude_raw": 0.12,
@@ -1292,6 +1446,8 @@
    "jdLevel": "entry",
    "jdPosition": "Junior Graphic Designer",
    "preds": {
+    "finetuned_calibrated": 0.1733,
+    "finetuned_raw": 0.3736,
     "base_mpnet": 0.3955,
     "claude_calibrated": 0.1855,
     "claude_raw": 0.08,
@@ -1309,6 +1465,8 @@
    "jdLevel": "senior",
    "jdPosition": "Senior Learning & Development Manager",
    "preds": {
+    "finetuned_calibrated": 0.232,
+    "finetuned_raw": 0.4272,
     "base_mpnet": 0.467,
     "claude_calibrated": 0.1855,
     "claude_raw": 0.08,
@@ -1326,6 +1484,8 @@
    "jdLevel": "mid",
    "jdPosition": "Pharma Field Sales - Cardiometabolic Care Specialist - P Chicago East",
    "preds": {
+    "finetuned_calibrated": 0.5721,
+    "finetuned_raw": 0.6452,
     "base_mpnet": 0.4475,
     "claude_calibrated": 0.645,
     "claude_raw": 0.22,
@@ -1343,6 +1503,8 @@
    "jdLevel": "lead",
    "jdPosition": "Sr Director, Strategic Communications - Chief Commercial Officer",
    "preds": {
+    "finetuned_calibrated": 0.6947,
+    "finetuned_raw": 0.7232,
     "base_mpnet": 0.5092,
     "claude_calibrated": 0.3619,
     "claude_raw": 0.18,
@@ -1360,6 +1522,8 @@
    "jdLevel": "mid",
    "jdPosition": "Software Engineer",
    "preds": {
+    "finetuned_calibrated": 0.7439,
+    "finetuned_raw": 0.759,
     "base_mpnet": 0.5226,
     "claude_calibrated": 0.8243,
     "claude_raw": 0.55,
@@ -1377,6 +1541,8 @@
    "jdLevel": "mid",
    "jdPosition": "DevOps Engineer - Azure",
    "preds": {
+    "finetuned_calibrated": 0.197,
+    "finetuned_raw": 0.3967,
     "base_mpnet": 0.432,
     "claude_calibrated": 0.2136,
     "claude_raw": 0.12,
@@ -1394,6 +1560,8 @@
    "jdLevel": "entry",
    "jdPosition": "Junior In-House Counsel",
    "preds": {
+    "finetuned_calibrated": 0.2251,
+    "finetuned_raw": 0.4215,
     "base_mpnet": 0.3553,
     "claude_calibrated": 0.1855,
     "claude_raw": 0.08,
@@ -1411,6 +1579,8 @@
    "jdLevel": "lead",
    "jdPosition": "Vice President, Internal Audit",
    "preds": {
+    "finetuned_calibrated": 0.7373,
+    "finetuned_raw": 0.754,
     "base_mpnet": 0.4912,
     "claude_calibrated": 0.645,
     "claude_raw": 0.22,
@@ -1428,6 +1598,8 @@
    "jdLevel": "mid",
    "jdPosition": "Process Engineer",
    "preds": {
+    "finetuned_calibrated": 0.2248,
+    "finetuned_raw": 0.4212,
     "base_mpnet": 0.384,
     "claude_calibrated": 0.1855,
     "claude_raw": 0.08,
@@ -1445,6 +1617,8 @@
    "jdLevel": "senior",
    "jdPosition": "Senior AI Engineer",
    "preds": {
+    "finetuned_calibrated": 0.4464,
+    "finetuned_raw": 0.5711,
     "base_mpnet": 0.5374,
     "claude_calibrated": 0.645,
     "claude_raw": 0.25,
@@ -1462,6 +1636,8 @@
    "jdLevel": "senior",
    "jdPosition": "Senior Healthcare Analytics Manager",
    "preds": {
+    "finetuned_calibrated": 0.7595,
+    "finetuned_raw": 0.7712,
     "base_mpnet": 0.626,
     "claude_calibrated": 0.8132,
     "claude_raw": 0.38,
@@ -1479,6 +1655,8 @@
    "jdLevel": "mid",
    "jdPosition": "DevOps Engineer - Azure",
    "preds": {
+    "finetuned_calibrated": 0.6739,
+    "finetuned_raw": 0.7091,
     "base_mpnet": 0.5931,
     "claude_calibrated": 0.8132,
     "claude_raw": 0.38,
@@ -1496,6 +1674,8 @@
    "jdLevel": "senior",
    "jdPosition": "Floor Lead / Budtender",
    "preds": {
+    "finetuned_calibrated": 0.3771,
+    "finetuned_raw": 0.5291,
     "base_mpnet": 0.4043,
     "claude_calibrated": 0.2136,
     "claude_raw": 0.12,
@@ -1513,6 +1693,8 @@
    "jdLevel": "entry",
    "jdPosition": "Junior Brand Designer",
    "preds": {
+    "finetuned_calibrated": 0.2108,
+    "finetuned_raw": 0.4092,
     "base_mpnet": 0.466,
     "claude_calibrated": 0.1529,
     "claude_raw": 0.05,
@@ -1530,6 +1712,8 @@
    "jdLevel": "lead",
    "jdPosition": "Sr Director, Strategic Communications - Chief Commercial Officer",
    "preds": {
+    "finetuned_calibrated": 0.4196,
+    "finetuned_raw": 0.5551,
     "base_mpnet": 0.575,
     "claude_calibrated": 0.3619,
     "claude_raw": 0.18,
@@ -1547,6 +1731,8 @@
    "jdLevel": "senior",
    "jdPosition": "Senior DevOps Engineer - Kubernetes",
    "preds": {
+    "finetuned_calibrated": 0.2698,
+    "finetuned_raw": 0.4567,
     "base_mpnet": 0.5832,
     "claude_calibrated": 0.3619,
     "claude_raw": 0.15,
@@ -1564,6 +1750,8 @@
    "jdLevel": "mid",
    "jdPosition": "Software Engineer",
    "preds": {
+    "finetuned_calibrated": 0.7483,
+    "finetuned_raw": 0.7624,
     "base_mpnet": 0.532,
     "claude_calibrated": 0.8132,
     "claude_raw": 0.39,
@@ -1581,6 +1769,8 @@
    "jdLevel": "mid",
    "jdPosition": "Instructional Design Manager",
    "preds": {
+    "finetuned_calibrated": 0.5553,
+    "finetuned_raw": 0.6353,
     "base_mpnet": 0.6986,
     "claude_calibrated": 0.8132,
     "claude_raw": 0.35,
@@ -1598,6 +1788,8 @@
    "jdLevel": "mid",
    "jdPosition": "Technical Product Owner",
    "preds": {
+    "finetuned_calibrated": 0.2007,
+    "finetuned_raw": 0.4001,
     "base_mpnet": 0.279,
     "claude_calibrated": 0.2136,
     "claude_raw": 0.12,
@@ -1615,6 +1807,8 @@
    "jdLevel": "entry",
    "jdPosition": "Junior Graphic Designer",
    "preds": {
+    "finetuned_calibrated": 0.2781,
+    "finetuned_raw": 0.4628,
     "base_mpnet": 0.5603,
     "claude_calibrated": 0.2136,
     "claude_raw": 0.12,
@@ -1632,6 +1826,8 @@
    "jdLevel": "senior",
    "jdPosition": "Senior Analyst-Product Management",
    "preds": {
+    "finetuned_calibrated": 0.1632,
+    "finetuned_raw": 0.3631,
     "base_mpnet": 0.2725,
     "claude_calibrated": 0.3619,
     "claude_raw": 0.18,
@@ -1649,6 +1845,8 @@
    "jdLevel": "mid",
    "jdPosition": "HR Compliance Manager",
    "preds": {
+    "finetuned_calibrated": 0.6094,
+    "finetuned_raw": 0.6679,
     "base_mpnet": 0.6199,
     "claude_calibrated": 0.6674,
     "claude_raw": 0.28,
@@ -1666,6 +1864,8 @@
    "jdLevel": "mid",
    "jdPosition": "HR Compliance Manager",
    "preds": {
+    "finetuned_calibrated": 0.3423,
+    "finetuned_raw": 0.507,
     "base_mpnet": 0.4261,
     "claude_calibrated": 0.645,
     "claude_raw": 0.24,
@@ -1683,6 +1883,8 @@
    "jdLevel": "mid",
    "jdPosition": "Technical Product Owner",
    "preds": {
+    "finetuned_calibrated": 0.3653,
+    "finetuned_raw": 0.5217,
     "base_mpnet": 0.4899,
     "claude_calibrated": 0.3619,
     "claude_raw": 0.18,
@@ -1700,6 +1902,8 @@
    "jdLevel": "senior",
    "jdPosition": "Senior Cloud Security Engineer",
    "preds": {
+    "finetuned_calibrated": 0.5687,
+    "finetuned_raw": 0.6432,
     "base_mpnet": 0.5582,
     "claude_calibrated": 0.8132,
     "claude_raw": 0.36,
@@ -1717,6 +1921,8 @@
    "jdLevel": "entry",
    "jdPosition": "Machine Learning Engineer II (Fraud)",
    "preds": {
+    "finetuned_calibrated": 0.2715,
+    "finetuned_raw": 0.458,
     "base_mpnet": 0.3475,
     "claude_calibrated": 0.3619,
     "claude_raw": 0.18,
@@ -1734,6 +1940,8 @@
    "jdLevel": "senior",
    "jdPosition": "Senior Software Engineer",
    "preds": {
+    "finetuned_calibrated": 0.6438,
+    "finetuned_raw": 0.6894,
     "base_mpnet": 0.5667,
     "claude_calibrated": 0.8132,
     "claude_raw": 0.34,
@@ -1751,6 +1959,8 @@
    "jdLevel": "entry",
    "jdPosition": "Associate Information Security Analyst",
    "preds": {
+    "finetuned_calibrated": 0.8523,
+    "finetuned_raw": 0.8597,
     "base_mpnet": 0.7357,
     "claude_calibrated": 0.828,
     "claude_raw": 0.68,
@@ -1768,6 +1978,8 @@
    "jdLevel": "lead",
    "jdPosition": "Sr. Principal Software Engineer",
    "preds": {
+    "finetuned_calibrated": 0.5442,
+    "finetuned_raw": 0.6287,
     "base_mpnet": 0.5285,
     "claude_calibrated": 0.8132,
     "claude_raw": 0.38,
@@ -1785,6 +1997,8 @@
    "jdLevel": "senior",
    "jdPosition": "Business Development Representative",
    "preds": {
+    "finetuned_calibrated": 0.1265,
+    "finetuned_raw": 0.3195,
     "base_mpnet": 0.2846,
     "claude_calibrated": 0.2136,
     "claude_raw": 0.12,
@@ -1802,6 +2016,8 @@
    "jdLevel": "mid",
    "jdPosition": "Financial Planning & Analysis Specialist - Contract",
    "preds": {
+    "finetuned_calibrated": 0.8004,
+    "finetuned_raw": 0.8063,
     "base_mpnet": 0.6056,
     "claude_calibrated": 0.828,
     "claude_raw": 0.59,
@@ -1819,6 +2035,8 @@
    "jdLevel": "mid",
    "jdPosition": "Instructional Design Manager",
    "preds": {
+    "finetuned_calibrated": 0.2383,
+    "finetuned_raw": 0.4323,
     "base_mpnet": 0.364,
     "claude_calibrated": 0.2136,
     "claude_raw": 0.12,
@@ -1836,6 +2054,8 @@
    "jdLevel": "entry",
    "jdPosition": "Machine Learning Engineer II (Fraud)",
    "preds": {
+    "finetuned_calibrated": 0.1243,
+    "finetuned_raw": 0.3165,
     "base_mpnet": 0.2256,
     "claude_calibrated": 0.1855,
     "claude_raw": 0.08,
@@ -1853,6 +2073,8 @@
    "jdLevel": "entry",
    "jdPosition": "Junior Brand Designer",
    "preds": {
+    "finetuned_calibrated": 0.1624,
+    "finetuned_raw": 0.3621,
     "base_mpnet": 0.4365,
     "claude_calibrated": 0.2136,
     "claude_raw": 0.12,
@@ -1870,6 +2092,8 @@
    "jdLevel": "lead",
    "jdPosition": "Director of Assessment & Evaluation",
    "preds": {
+    "finetuned_calibrated": 0.3299,
+    "finetuned_raw": 0.4988,
     "base_mpnet": 0.403,
     "claude_calibrated": 0.1855,
     "claude_raw": 0.08,
@@ -1887,6 +2111,8 @@
    "jdLevel": "senior",
    "jdPosition": "Senior UX Researcher",
    "preds": {
+    "finetuned_calibrated": 0.2242,
+    "finetuned_raw": 0.4207,
     "base_mpnet": 0.4324,
     "claude_calibrated": 0.3619,
     "claude_raw": 0.18,
@@ -1904,6 +2130,8 @@
    "jdLevel": "lead",
    "jdPosition": "Sr. Principal Software Engineer",
    "preds": {
+    "finetuned_calibrated": 0.2862,
+    "finetuned_raw": 0.4687,
     "base_mpnet": 0.4409,
     "claude_calibrated": 0.2136,
     "claude_raw": 0.12,
@@ -1921,6 +2149,8 @@
    "jdLevel": "lead",
    "jdPosition": "Director of Security Engineering",
    "preds": {
+    "finetuned_calibrated": 0.3775,
+    "finetuned_raw": 0.5293,
     "base_mpnet": 0.469,
     "claude_calibrated": 0.645,
     "claude_raw": 0.25,
@@ -1929,7 +2159,238 @@
    }
   }
  ],
- "audit": null,
+ "audit": {
+  "calibration": {
+   "ece": 0.0307,
+   "pred_range": [
+    0.054,
+    0.852
+   ],
+   "true_range": [
+    0.054,
+    0.945
+   ]
+  },
+  "name_bias": {
+   "groups": {
+    "white_m": {
+     "mean_score": 0.4616,
+     "delta_vs_overall": 0.0027,
+     "max_abs_shift": 0.0231
+    },
+    "white_f": {
+     "mean_score": 0.4591,
+     "delta_vs_overall": 0.0003,
+     "max_abs_shift": 0.023
+    },
+    "black_m": {
+     "mean_score": 0.4592,
+     "delta_vs_overall": 0.0003,
+     "max_abs_shift": 0.0267
+    },
+    "black_f": {
+     "mean_score": 0.4562,
+     "delta_vs_overall": -0.0027,
+     "max_abs_shift": 0.0385
+    },
+    "hispanic": {
+     "mean_score": 0.4609,
+     "delta_vs_overall": 0.002,
+     "max_abs_shift": 0.0183
+    },
+    "asian": {
+     "mean_score": 0.4562,
+     "delta_vs_overall": -0.0027,
+     "max_abs_shift": 0.0344
+    }
+   },
+   "group_mean_spread": 0.0054,
+   "mean_per_pair_sd": 0.0031,
+   "verdict_flips": 3,
+   "n_pairs": 106,
+   "largest_gap": {
+    "high": "white_m",
+    "low": "black_f",
+    "wilcoxon_p": 0.0
+   }
+  },
+  "preprocessing": {
+   "raw_jd": {
+    "spearman": 0.8184,
+    "mae": 0.1287
+   },
+   "naive_truncate": {
+    "spearman": 0.8184,
+    "mae": 0.1287
+   },
+   "smart_truncate": {
+    "spearman": 0.8163,
+    "mae": 0.127
+   }
+  },
+  "by_match_type": {
+   "strong": {
+    "mae": 0.1655,
+    "bias": -0.1655,
+    "n": 27
+   },
+   "good": {
+    "mae": 0.0954,
+    "bias": -0.0241,
+    "n": 14
+   },
+   "partial": {
+    "mae": 0.1629,
+    "bias": 0.0773,
+    "n": 13
+   },
+   "hard_negative": {
+    "mae": 0.0947,
+    "bias": 0.0274,
+    "n": 26
+   },
+   "weak": {
+    "mae": 0.1185,
+    "bias": 0.0905,
+    "n": 26
+   }
+  },
+  "hard_negative_subtypes": {
+   "impressive_irrelevant": {
+    "mae": 0.1465,
+    "n": 30
+   },
+   "keyword_overlap": {
+    "mae": 0.093,
+    "n": 22
+   },
+   "wrong_specialization": {
+    "mae": 0.0882,
+    "n": 19
+   }
+  }
+ },
+ "significance": {
+  "_what": "Which differences between scoring engines survive resampling.",
+  "_method": "Paired cluster bootstrap. Postings are the resampling unit because the 106 pairs come from 50 postings and pairs sharing a posting are not independent. Both engines score the identical resample, so the difference is paired. The p-value is the two-sided achieved significance level of the bootstrap distribution of the difference.",
+  "n_pairs": 106,
+  "n_postings": 50,
+  "resamples": 10000,
+  "seed": 42,
+  "production_engine": "finetuned_calibrated",
+  "comparisons": [
+   {
+    "metric": "spearman",
+    "a": "finetuned_calibrated",
+    "b": "base_mpnet",
+    "a_value": 0.8164,
+    "b_value": 0.6246,
+    "difference": 0.1918,
+    "ci95": [
+     0.1077,
+     0.2919
+    ],
+    "p_value": 0.0,
+    "n_effective_resamples": 10000,
+    "significant": true
+   },
+   {
+    "metric": "mae",
+    "a": "finetuned_calibrated",
+    "b": "base_mpnet",
+    "a_value": 0.127,
+    "b_value": 0.2138,
+    "difference": -0.0867,
+    "ci95": [
+     -0.1066,
+     -0.0673
+    ],
+    "p_value": 0.0,
+    "n_effective_resamples": 10000,
+    "significant": true
+   },
+   {
+    "metric": "spearman",
+    "a": "finetuned_calibrated",
+    "b": "claude",
+    "a_value": 0.8164,
+    "b_value": 0.7117,
+    "difference": 0.1047,
+    "ci95": [
+     0.0198,
+     0.2116
+    ],
+    "p_value": 0.012,
+    "n_effective_resamples": 10000,
+    "significant": true
+   },
+   {
+    "metric": "mae",
+    "a": "finetuned_calibrated",
+    "b": "claude",
+    "a_value": 0.127,
+    "b_value": 0.2518,
+    "difference": -0.1248,
+    "ci95": [
+     -0.1616,
+     -0.0886
+    ],
+    "p_value": 0.0,
+    "n_effective_resamples": 10000,
+    "significant": true
+   },
+   {
+    "metric": "spearman",
+    "a": "finetuned_calibrated",
+    "b": "tfidf",
+    "a_value": 0.8164,
+    "b_value": 0.5657,
+    "difference": 0.2508,
+    "ci95": [
+     0.1237,
+     0.404
+    ],
+    "p_value": 0.0,
+    "n_effective_resamples": 10000,
+    "significant": true
+   },
+   {
+    "metric": "spearman",
+    "a": "finetuned_calibrated",
+    "b": "jaccard",
+    "a_value": 0.8164,
+    "b_value": 0.5592,
+    "difference": 0.2572,
+    "ci95": [
+     0.1193,
+     0.4211
+    ],
+    "p_value": 0.0,
+    "n_effective_resamples": 10000,
+    "significant": true
+   }
+  ],
+  "precision_at_1": {
+   "hits": 45,
+   "postings": 53,
+   "precision_at_1": 0.8491,
+   "wilson_ci95": [
+    0.7295,
+    0.9215
+   ],
+   "random_baseline": 0.25,
+   "exact_binomial_p_vs_baseline": 7.605e-20,
+   "note": "One posting, four candidates, does the true best candidate rank first. Ranking is invariant to monotone calibration, so this measures the model rather than the calibrator.",
+   "_scope": "Spans all 53 external postings (212 pairs), not only the 50 postings in the 106-pair final test that the bootstrap comparisons above use. Including the calibration half is legitimate here precisely because ranking cannot be affected by the calibrator fitted on it, but it is a different denominator and is reported separately for that reason."
+  },
+  "grouped_calibration_check": {
+   "postings_held_out": 50,
+   "reported_mae": 0.127,
+   "leave_one_posting_out_mae": 0.1276,
+   "difference": 0.0006,
+   "spearman_unchanged": 0.8111
+  }
+ },
  "matchTypes": [
   "good",
   "hard_negative",
