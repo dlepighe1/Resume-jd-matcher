@@ -1,0 +1,121 @@
+{
+  "_what": "Which differences between scoring engines survive resampling.",
+  "_method": "Paired cluster bootstrap. Postings are the resampling unit because the 106 pairs come from 50 postings and pairs sharing a posting are not independent. Both engines score the identical resample, so the difference is paired. The p-value is the two-sided achieved significance level of the bootstrap distribution of the difference.",
+  "n_pairs": 106,
+  "n_postings": 50,
+  "resamples": 10000,
+  "seed": 42,
+  "production_engine": "finetuned_calibrated",
+  "comparisons": [
+    {
+      "metric": "spearman",
+      "a": "finetuned_calibrated",
+      "b": "base_mpnet",
+      "a_value": 0.8164,
+      "b_value": 0.6246,
+      "difference": 0.1918,
+      "ci95": [
+        0.1077,
+        0.2919
+      ],
+      "p_value": 0.0,
+      "n_effective_resamples": 10000,
+      "significant": true
+    },
+    {
+      "metric": "mae",
+      "a": "finetuned_calibrated",
+      "b": "base_mpnet",
+      "a_value": 0.127,
+      "b_value": 0.2138,
+      "difference": -0.0867,
+      "ci95": [
+        -0.1066,
+        -0.0673
+      ],
+      "p_value": 0.0,
+      "n_effective_resamples": 10000,
+      "significant": true
+    },
+    {
+      "metric": "spearman",
+      "a": "finetuned_calibrated",
+      "b": "claude",
+      "a_value": 0.8164,
+      "b_value": 0.7117,
+      "difference": 0.1047,
+      "ci95": [
+        0.0198,
+        0.2116
+      ],
+      "p_value": 0.012,
+      "n_effective_resamples": 10000,
+      "significant": true
+    },
+    {
+      "metric": "mae",
+      "a": "finetuned_calibrated",
+      "b": "claude",
+      "a_value": 0.127,
+      "b_value": 0.2518,
+      "difference": -0.1248,
+      "ci95": [
+        -0.1616,
+        -0.0886
+      ],
+      "p_value": 0.0,
+      "n_effective_resamples": 10000,
+      "significant": true
+    },
+    {
+      "metric": "spearman",
+      "a": "finetuned_calibrated",
+      "b": "tfidf",
+      "a_value": 0.8164,
+      "b_value": 0.5657,
+      "difference": 0.2508,
+      "ci95": [
+        0.1237,
+        0.404
+      ],
+      "p_value": 0.0,
+      "n_effective_resamples": 10000,
+      "significant": true
+    },
+    {
+      "metric": "spearman",
+      "a": "finetuned_calibrated",
+      "b": "jaccard",
+      "a_value": 0.8164,
+      "b_value": 0.5592,
+      "difference": 0.2572,
+      "ci95": [
+        0.1193,
+        0.4211
+      ],
+      "p_value": 0.0,
+      "n_effective_resamples": 10000,
+      "significant": true
+    }
+  ],
+  "precision_at_1": {
+    "hits": 45,
+    "postings": 53,
+    "precision_at_1": 0.8491,
+    "wilson_ci95": [
+      0.7295,
+      0.9215
+    ],
+    "random_baseline": 0.25,
+    "exact_binomial_p_vs_baseline": 7.605e-20,
+    "note": "One posting, four candidates, does the true best candidate rank first. Ranking is invariant to monotone calibration, so this measures the model rather than the calibrator.",
+    "_scope": "Spans all 53 external postings (212 pairs), not only the 50 postings in the 106-pair final test that the bootstrap comparisons above use. Including the calibration half is legitimate here precisely because ranking cannot be affected by the calibrator fitted on it, but it is a different denominator and is reported separately for that reason."
+  },
+  "grouped_calibration_check": {
+    "postings_held_out": 50,
+    "reported_mae": 0.127,
+    "leave_one_posting_out_mae": 0.1276,
+    "difference": 0.0006,
+    "spearman_unchanged": 0.8111
+  }
+}

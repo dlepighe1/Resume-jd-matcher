@@ -25,12 +25,26 @@ from sklearn.isotonic import IsotonicRegression
 from sklearn.linear_model import LinearRegression
 
 REPO = Path(__file__).resolve().parents[1]
-RESULTS_DIR = REPO / "results"
+RESULTS_DIR = REPO / "Results"
 CAL_PATH = RESULTS_DIR / "claude_benchmark_cal_predictions.jsonl"
 TEST_PATH = RESULTS_DIR / "claude_benchmark_predictions.jsonl"
+PRODUCTION_PATH = RESULTS_DIR / "production_results.json"
 
-# Shipped fine-tuned model on the same 106-pair final test (Results/results_summary.json).
-FINETUNED = {"spearman": 0.8645, "mae": 0.1021}
+
+def finetuned_reference() -> dict:
+    """Read the shipped model's numbers instead of hardcoding them.
+
+    This used to be a literal, and it went stale: it still read 0.8645 / 0.1021 after two
+    production re-runs had moved the real figures, so the comparison table in this file
+    flattered the model against Claude by roughly 0.05 Spearman. Reading the artifact means
+    the two numbers cannot drift apart again.
+    """
+    if not PRODUCTION_PATH.exists():
+        return {"spearman": None, "mae": None,
+                "note": f"{PRODUCTION_PATH.name} not found; run Notebooks/05_production.ipynb"}
+    prod = json.loads(PRODUCTION_PATH.read_text(encoding="utf-8"))["production"]
+    return {"spearman": prod["platt"]["spearman"], "mae": prod["platt"]["mae"],
+            "source": "Results/production_results.json (production seed, Platt calibrated)"}
 
 
 def load(path: Path):
@@ -67,16 +81,19 @@ def main() -> None:
     lin_pred = np.clip(lin.predict(raw_test.reshape(-1, 1)), 0.0, 1.0)
     lin_sp, lin_mae = metrics(lin_pred, y_test)
 
+    finetuned = finetuned_reference()
     summary = {
         "model": "us.anthropic.claude-opus-4-5-20251101-v1:0 (Bedrock)",
         "test_pairs": len(raw_test),
         "claude_raw": {"spearman": raw_sp, "mae": raw_mae},
         "claude_linear_calibrated": {"spearman": lin_sp, "mae": lin_mae},
         "claude_isotonic_calibrated": {"spearman": iso_sp, "mae": iso_mae},
-        "finetuned_mpnet": FINETUNED,
+        "finetuned_mpnet": finetuned,
         "note": "Calibrator fit on the 106 calibration pairs, applied to the 106 held-out test "
                 "pairs, same protocol as the fine-tuned model. Monotonic, so Spearman is "
                 "unchanged; only MAE moves.",
+        "significance_note": "Whether the gap between these two is larger than sampling noise "
+                             "is tested in Results/significance.json, not asserted here.",
     }
     out = RESULTS_DIR / "claude_benchmark_calibrated.json"
     out.write_text(json.dumps(summary, indent=2), encoding="utf-8")
@@ -87,7 +104,11 @@ def main() -> None:
     print(f"  raw                        Spearman={raw_sp:.4f}  MAE={raw_mae:.4f}")
     print(f"  + linear calibration       Spearman={lin_sp:.4f}  MAE={lin_mae:.4f}")
     print(f"  + isotonic calibration     Spearman={iso_sp:.4f}  MAE={iso_mae:.4f}")
-    print(f"  Fine-tuned MPNet (shipped) Spearman={FINETUNED['spearman']:.4f}  MAE={FINETUNED['mae']:.4f}")
+    if finetuned["spearman"] is None:
+        print("  Fine-tuned MPNet (shipped) unavailable: run Notebooks/05_production.ipynb")
+    else:
+        print(f"  Fine-tuned MPNet (shipped) Spearman={finetuned['spearman']:.4f}  "
+              f"MAE={finetuned['mae']:.4f}")
     print(f"\nSaved: {out.relative_to(REPO)}")
 
 

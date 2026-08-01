@@ -14,8 +14,10 @@
     "mae": 0.1613
   },
   "finetuned_mpnet": {
-    "spearman": 0.8645,
-    "mae": 0.1021
+    "spearman": 0.8163,
+    "mae": 0.127,
+    "source": "Results/production_results.json (production seed, Platt calibrated)"
   },
-  "note": "Calibrator fit on the 106 calibration pairs, applied to the 106 held-out test pairs \u2014 same protocol as the fine-tuned model. Monotonic, so Spearman is unchanged; only MAE moves."
+  "note": "Calibrator fit on the 106 calibration pairs, applied to the 106 held-out test pairs, same protocol as the fine-tuned model. Monotonic, so Spearman is unchanged; only MAE moves.",
+  "significance_note": "Whether the gap between these two is larger than sampling noise is tested in Results/significance.json, not asserted here."
 }
