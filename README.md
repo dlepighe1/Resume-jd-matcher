@@ -32,13 +32,13 @@ from Claude Opus 4.5. See [`Results/significance.json`](Results/significance.jso
 | | |
 |---|---|
 | Full metrics | [`Results/results_summary.json`](Results/results_summary.json) |
-| Research notebooks | [`Notebooks/`](Notebooks/), 01 to 05 in story order, plus an audit |
+| Research notebooks | [`Notebooks/`](Notebooks/), 01 to 05 in story order, plus an audit and an ablation |
 | Data card | [`docs/DATA_CARD.md`](docs/DATA_CARD.md) |
 | Scope of this repo | [`docs/RESEARCH_SPEC.md`](docs/RESEARCH_SPEC.md) |
 | Product spec (separate repo) | [`docs/SAAS_SPEC.md`](docs/SAAS_SPEC.md) |
 | Significance testing | [`Results/significance.json`](Results/significance.json), `python scripts/significance.py` |
 | Reproduce | `python src/train.py` |
-| Tests | 165, all offline: no model downloads, no API calls |
+| Tests | 170, all offline: no model downloads, no API calls |
 
 ---
 
@@ -102,13 +102,24 @@ At this data scale, cross-encoder capacity is a liability rather than an asset.
 Acted on the evidence rather than the leaderboard:
 
 - **70% more unique postings.** 815 pairs from 255 postings, up from 500 pairs from 150.
-- **Combined loss.** CoSENT for ranking plus CosineSimilarity for absolute score, so the
-  model receives gradient signal in both directions.
+- **Combined loss.** CoSENT for ranking plus CosineSimilarity for absolute score, on the
+  reasoning that the model should receive gradient signal in both directions. *This is the
+  one design choice here that is reasoning rather than evidence.* `Notebooks/07` tests it.
 - **Calibration fitted on external data.** The 212 external pairs split 106 for calibration
   and 106 for the final test. Every reported number comes from the untouched half.
-- **Production discipline.** Every RNG seeded before each `fit()` call, three seeds reported
-  as mean and standard deviation, a base-model baseline on the same held-out pairs, bootstrap
-  95% confidence intervals, and precision@1 across the unseen postings.
+- **Production discipline.** Three seeds reported as mean and standard deviation, a
+  base-model baseline on the same held-out pairs, bootstrap 95% confidence intervals, and
+  precision@1 across the unseen postings.
+
+On seeding: `set_seed()` covers `random`, `numpy`, `torch`, `torch.cuda`, and sets
+`cudnn.deterministic`. That is not enough for bit-reproducibility, and the README used to
+imply otherwise. `fit()` runs with `use_amp=True`, and the gradient scaler adapts to observed
+overflows, so re-running an identical config gives slightly different weights. Two full runs
+of this pipeline produced aggregate Spearman of 0.8355 and 0.8273, a gap of 0.35 standard
+deviations of the seed spread. The cross-encoder in the same notebook, which does not use
+AMP, reproduced bit-for-bit across both runs. Dropping AMP would buy exact reproducibility at
+roughly twice the training time. The three-seed protocol exists precisely because the run is
+not deterministic.
 
 Results on the 106-pair final test:
 
@@ -178,6 +189,48 @@ never predicts above 0.852 while labels reach 0.945. Ranking is unaffected, whic
 precision@1 holds at 84.9% while absolute error on strong pairs is the worst of any group.
 The practical consequence: read the output as a ranking signal, not as a percentage fit.
 
+### 7. Does the combined loss earn its place? (`Notebooks/07`)
+
+Status: written and pre-registered, not yet run.
+
+Notebook 05 trains with `CoSENTLoss` and `CosineSimilarityLoss` together. Notebooks 01 to 04
+use CoSENT alone. That makes the combined objective the one architectural decision separating
+the production model from the exploratory study, and until this notebook runs it is asserted
+rather than tested. Four cross-encoder fixes that did not work were ablated; the thing that
+shipped was not.
+
+Three arms, three seeds each, on the identical 106-pair final test:
+
+| Arm | Objective 1 | Objective 2 |
+|---|---|---|
+| `cosent` | CoSENT | CoSENT |
+| `cosine` | CosineSimilarity | CosineSimilarity |
+| `combined` | CoSENT | CosineSimilarity |
+
+**Every arm gets two dataloaders on purpose.** `fit()` runs one backward pass per objective
+per step, so a two-objective arm receives twice the gradient updates of a one-objective arm.
+Comparing them directly would confound the loss with twice the optimisation, and a win for
+the combined arm might be nothing more than a longer schedule. Matching the objective count
+holds steps, data exposure, and warmup identical so that only the loss differs.
+
+**The hypothesis is registered in the notebook before the runs.** CoSENT is rank-based and
+scale-free, so it should rank well and calibrate badly, which is what notebook 01 saw.
+The sharper prediction: an oracle calibrator fitted directly on the test set (a ceiling, not
+a reportable metric) leaves only 0.019 MAE recoverable beyond Platt. If calibration already
+extracts the magnitude information, the CosineSimilarity term is redundant and `cosent` plus
+Platt should tie `combined` plus Platt. If that holds, half the loss function comes out.
+
+The notebook asserts its test split matches the shipped one by fingerprint before training,
+and exports per-pair predictions. The verdict comes from the same paired cluster bootstrap
+used everywhere else:
+
+```bash
+python scripts/significance.py --ablation
+```
+
+All three outcomes are reported, including the one where the shipped design turns out to have
+been unnecessary.
+
 ### Comparison against a frontier LLM
 
 Claude Opus 4.5 scored the same 106 held-out pairs through the production prompt, with
@@ -243,6 +296,7 @@ Notebooks/
   01 to 04            The study at 500 pairs from 150 postings, exploratory and unseeded
   05_production       The model that ships: 815 pairs, 3 seeds, CIs, publishes to the Hub
   06_model_audit      Bias audit, non-neural baselines, ablations. CPU only, no training
+  07_loss_ablation    Does the combined loss beat its components. Pre-registered, GPU
 Data/                 Training and external test CSVs
 docs/DATA_CARD.md     Provenance, label schema, and the limits of what this data supports
 Results/              Charts, per-pair predictions, and results_summary.json
@@ -328,7 +382,7 @@ still works, which is the part with evidence behind it.
 ## Running the tests
 
 ```bash
-pytest                # 102 tests: src/, app/, scripts/, and the scoring service
+pytest                # 107 tests: src/, app/, scripts/, and the scoring service
 cd web && npm test    #  63 tests: providers, benchmark maths, ATS keywords
 ```
 

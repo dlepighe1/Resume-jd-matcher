@@ -211,6 +211,103 @@ def test_load_pairs_ignores_claude_rows_that_errored(tmp_path, monkeypatch):
     assert pairs[0]["preds"]["claude"] == 0.5
 
 
+# ── The loss ablation ─────────────────────────────────────────────────────────
+# Exercised on synthetic data so the whole path is known to work before anyone spends four
+# GPU hours producing the real input.
+
+def _ablation_fixture(tmp_path, ids=None, arms=("cosent", "cosine", "combined")):
+    results = tmp_path / "Results"
+    results.mkdir(parents=True, exist_ok=True)
+    rng = np.random.default_rng(0)
+    ids = list(range(24)) if ids is None else ids
+    pairs = []
+    for k, i in enumerate(ids):
+        true = round(float((k % 8) / 8), 4)
+        preds = {}
+        for arm in arms:
+            # `combined` tracks the label closely, the others progressively less so.
+            noise = {"combined": 0.02, "cosent": 0.05, "cosine": 0.25}.get(arm, 0.1)
+            v = float(np.clip(true + rng.normal(0, noise), 0, 1))
+            preds[f"{arm}_raw"] = round(v, 4)
+            preds[f"{arm}_platt"] = round(v, 4)
+        pairs.append({"id": i, "true": true, "jd": f"posting-{k // 2}",
+                      "match_type": "strong", "preds": preds})
+    (results / "loss_ablation.json").write_text(
+        json.dumps({"arms": list(arms), "pairs": pairs}), encoding="utf-8")
+    return results
+
+
+def test_ablation_export_loads_and_clusters_by_posting(tmp_path, monkeypatch):
+    results = _ablation_fixture(tmp_path)
+    monkeypatch.setattr(sig, "ABLATION", results / "loss_ablation.json")
+    monkeypatch.setattr(sig, "DEMO_PAIRS", results / "missing.json")
+
+    pairs, arms = sig.load_ablation_pairs()
+    assert len(pairs) == 24
+    assert arms == ["cosent", "cosine", "combined"]
+    assert len({p["posting"] for p in pairs}) == 12
+    assert "combined_platt" in pairs[0]["preds"]
+
+
+def test_ablation_refuses_a_different_test_split(tmp_path, monkeypatch):
+    """The ablation is only interpretable against notebook 05 if it ran on the same pairs.
+    A different split still produces plausible numbers for a different question."""
+    results = _ablation_fixture(tmp_path, ids=list(range(100, 124)))
+    (results / "demo_pairs.json").write_text(
+        json.dumps({"pairs": [{"id": i} for i in range(24)]}), encoding="utf-8")
+    monkeypatch.setattr(sig, "ABLATION", results / "loss_ablation.json")
+    monkeypatch.setattr(sig, "DEMO_PAIRS", results / "demo_pairs.json")
+
+    with pytest.raises(SystemExit, match="different test split"):
+        sig.load_ablation_pairs()
+
+
+def test_ablation_accepts_the_matching_split(tmp_path, monkeypatch):
+    results = _ablation_fixture(tmp_path)
+    (results / "demo_pairs.json").write_text(
+        json.dumps({"pairs": [{"id": i} for i in range(24)]}), encoding="utf-8")
+    monkeypatch.setattr(sig, "ABLATION", results / "loss_ablation.json")
+    monkeypatch.setattr(sig, "DEMO_PAIRS", results / "demo_pairs.json")
+
+    assert len(sig.load_ablation_pairs()[0]) == 24
+
+
+def test_ablation_end_to_end_writes_a_verdict(tmp_path, monkeypatch):
+    results = _ablation_fixture(tmp_path)
+    monkeypatch.setattr(sig, "ABLATION", results / "loss_ablation.json")
+    monkeypatch.setattr(sig, "DEMO_PAIRS", results / "missing.json")
+    monkeypatch.setattr(sig, "REPO", tmp_path)
+
+    out = results / "loss_ablation_significance.json"
+    sig.run_ablation(resamples=300, seed=1, out_path=out)
+
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    assert payload["reference_arm"] == "combined_platt"
+    assert payload["_preregistered_hypothesis"].startswith("H1")
+    assert payload["h1_verdict"] is not None
+    # combined is by construction the closest to the label, so cosine must be separable.
+    cosine = next(c for c in payload["comparisons"]
+                  if c["b"] == "cosine_platt" and c["metric"] == "spearman")
+    assert cosine["significant"]
+
+
+def test_ablation_omits_mae_when_one_side_is_uncalibrated(tmp_path, monkeypatch):
+    """Raw cosine is not an estimate of the label. An MAE against it would measure the
+    missing calibrator rather than the loss under test."""
+    results = _ablation_fixture(tmp_path)
+    monkeypatch.setattr(sig, "ABLATION", results / "loss_ablation.json")
+    monkeypatch.setattr(sig, "DEMO_PAIRS", results / "missing.json")
+    monkeypatch.setattr(sig, "REPO", tmp_path)
+
+    out = results / "loss_ablation_significance.json"
+    sig.run_ablation(resamples=200, seed=1, out_path=out)
+    payload = json.loads(out.read_text(encoding="utf-8"))
+
+    mae_targets = {c["b"] for c in payload["comparisons"] if c["metric"] == "mae"}
+    assert all(t.endswith("_platt") for t in mae_targets)
+    assert not any(t.endswith("_raw") for t in mae_targets)
+
+
 # ── The committed artifact ────────────────────────────────────────────────────
 
 def test_committed_significance_matches_the_committed_metrics():

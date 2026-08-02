@@ -25,9 +25,14 @@ Three things happen here.
    refits Platt leaving out one posting at a time, using only test-split pairs, to get an
    MAE estimate where no posting contributed to its own calibrator.
 
+A fourth mode, --ablation, applies the same paired cluster bootstrap to the loss-ablation
+arms from Notebooks/07 instead of to the scoring engines. It lives here rather than in the
+notebook so this project has exactly one implementation of the bootstrap.
+
 Usage:
     python scripts/significance.py
     python scripts/significance.py --resamples 20000
+    python scripts/significance.py --ablation
 """
 
 import argparse
@@ -48,8 +53,13 @@ RESULTS = REPO / "Results"
 DEMO_PAIRS = RESULTS / "demo_pairs.json"
 CLAUDE_PREDS = RESULTS / "claude_benchmark_predictions.jsonl"
 PRODUCTION = RESULTS / "production_results.json"
+ABLATION = RESULTS / "loss_ablation.json"
 
 PRODUCTION_ENGINE = "finetuned_calibrated"
+
+# The arm notebook 05 ships. Every ablation comparison is stated against it, so a result
+# reads as "dropping the second loss term costs X" rather than as an unanchored table.
+ABLATION_REFERENCE = "combined_platt"
 
 # MAE compares a prediction against a 0-1 label. TF-IDF and Jaccard produce a similarity
 # that was never meant to estimate that label, so their MAE measures the scale mismatch
@@ -211,13 +221,118 @@ def leave_one_posting_out(pairs) -> dict:
     }
 
 
+def load_ablation_pairs() -> tuple[list[dict], list[str]]:
+    """The 106 final-test pairs as scored by every arm of the loss ablation."""
+    data = json.loads(ABLATION.read_text(encoding="utf-8"))
+    pairs = [{
+        "id": p["id"],
+        "true": float(p["true"]),
+        "posting": p["jd"],
+        "match_type": p["match_type"],
+        "preds": {k: float(v) for k, v in p["preds"].items()},
+    } for p in data["pairs"]]
+
+    # Guard the same way the demo pipeline does. The ablation is only interpretable against
+    # notebook 05 if it ran on notebook 05's split.
+    if DEMO_PAIRS.exists():
+        shipped = {p["id"] for p in json.loads(DEMO_PAIRS.read_text(encoding="utf-8"))["pairs"]}
+        got = {p["id"] for p in pairs}
+        if shipped != got:
+            raise SystemExit(
+                f"Ablation ran on a different test split: {len(got - shipped)} pairs are not "
+                f"in Results/demo_pairs.json. The comparison would not be paired."
+            )
+    return pairs, list(data["arms"])
+
+
+def run_ablation(resamples: int, seed: int, out_path: Path) -> None:
+    if not ABLATION.exists():
+        sys.exit(f"Missing {ABLATION.relative_to(REPO)}. Run Notebooks/07_loss_ablation.ipynb "
+                 f"and copy its loss_ablation.json into Results/.")
+
+    pairs, arms = load_ablation_pairs()
+    rng = np.random.default_rng(seed)
+    available = set(pairs[0]["preds"])
+    n_postings = len({p["posting"] for p in pairs})
+
+    if ABLATION_REFERENCE not in available:
+        sys.exit(f"{ABLATION_REFERENCE} missing from the ablation export; found {sorted(available)}")
+
+    print(f"{len(pairs)} pairs from {n_postings} postings | arms: {', '.join(arms)}")
+    print(f"Reference arm: {ABLATION_REFERENCE}")
+    print(f"Paired cluster bootstrap over postings, {resamples} resamples, seed {seed}\n")
+
+    challengers = [e for e in sorted(available) if e != ABLATION_REFERENCE]
+    comparisons = []
+    for engine in challengers:
+        for metric in ("spearman", "mae"):
+            # Raw cosine is not an estimate of the label, so its MAE measures the missing
+            # calibrator rather than the loss. Only calibrated arms get an MAE comparison.
+            if metric == "mae" and not (engine.endswith("_platt")
+                                        and ABLATION_REFERENCE.endswith("_platt")):
+                continue
+            comparisons.append(
+                cluster_bootstrap(pairs, ABLATION_REFERENCE, engine, metric, resamples, rng))
+
+    print(f"{'comparison':<48} {'diff':>8} {'95% CI':>20} {'p':>8}")
+    print("-" * 88)
+    for c in comparisons:
+        label = f"{c['metric']}: {ABLATION_REFERENCE} vs {c['b']}"
+        ci = f"[{c['ci95'][0]:+.3f}, {c['ci95'][1]:+.3f}]"
+        flag = "" if c["significant"] else "   (not distinguishable)"
+        print(f"{label:<48} {c['difference']:>+8.4f} {ci:>20} {c['p_value']:>8.4f}{flag}")
+
+    h1 = next((c for c in comparisons
+               if c["b"] == "cosent_platt" and c["metric"] == "spearman"), None)
+    verdict = None
+    if h1 is not None:
+        verdict = ("H1 SUPPORTED: CoSENT alone is indistinguishable from the combined loss "
+                   "after calibration, so the CosineSimilarity term can be dropped."
+                   if not h1["significant"] else
+                   "H1 REJECTED: the combined loss and CoSENT alone are separable.")
+        print(f"\n{verdict}")
+
+    payload = {
+        "_what": "Does the combined loss beat its components, tested rather than asserted.",
+        "_method": (
+            "Paired cluster bootstrap over postings, the same implementation used for the "
+            "engine comparisons in significance.json. Every arm scored the identical 106 "
+            "pairs, and gradient-step count was matched across arms by giving each arm two "
+            "training objectives, so the only difference is which loss is applied."
+        ),
+        "_preregistered_hypothesis": (
+            "H1: after Platt calibration, CoSENT alone is indistinguishable from the combined "
+            "loss, because calibration already recovers the magnitude information the "
+            "CosineSimilarity term supplies. Registered in Notebooks/07 before the runs."
+        ),
+        "reference_arm": ABLATION_REFERENCE,
+        "n_pairs": len(pairs),
+        "n_postings": n_postings,
+        "resamples": resamples,
+        "seed": seed,
+        "comparisons": comparisons,
+        "h1_verdict": verdict,
+    }
+    out_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    print(f"\nSaved {out_path.relative_to(REPO)}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--resamples", type=int, default=10000)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--out", default=str(RESULTS / "significance.json"))
+    parser.add_argument("--ablation", action="store_true",
+                        help="compare the loss-ablation arms instead of the scoring engines")
     args = parser.parse_args()
+
+    if args.ablation:
+        out = Path(args.out)
+        if out == RESULTS / "significance.json":
+            out = RESULTS / "loss_ablation_significance.json"
+        run_ablation(args.resamples, args.seed, out)
+        return
 
     if not DEMO_PAIRS.exists():
         sys.exit(f"Missing {DEMO_PAIRS.relative_to(REPO)}. Run Notebooks/06_model_audit.ipynb first.")
