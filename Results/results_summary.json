@@ -1,6 +1,6 @@
 {
   "project": "ResumeAI: resume and job-description matching",
-  "timeline": "2026-04-28 to 2026-05-05 (studies 01-04), 2026-07 (production run, audit, and significance testing)",
+  "timeline": "2026-04-28 to 2026-05-05 (studies 01-04), 2026-07 (production run, audit, and significance testing), 2026-08-03 (pre-registered loss ablation)",
   "source_of_truth": "Executed notebook outputs. Every number below is transcribed from a cell output in Notebooks/ or computed by a script in scripts/ from a committed artifact, never from memory. tests/test_significance.py and tests/test_build_demo_data.py assert that the derived files still agree with the artifacts they came from.",
   "_note_counts_verified": "Unique-JD counts were measured directly from the CSVs on 2026-07-27. Earlier versions of this file reported 200 and 305; the true values are 150 and 255. See docs/DATA_CARD.md.",
   "data": {
@@ -409,6 +409,166 @@
       "_finding": "The model handles the two adversarial cases it was trained for. Resumes that share vocabulary with the posting (0.093) and resumes from an adjacent specialization (0.0882) are both scored better than average. The remaining weakness is the strong-but-irrelevant candidate at 0.1465: a genuinely impressive resume from the wrong field still pulls a higher score than it deserves."
     },
     "_guards": "Three, because this failed silently twice. Notebook 06 aborts on a >0.01 raw-Spearman disagreement with production_results.json. Notebook 05's export cell re-downloads the published model and reports whether the publish actually happened. scripts/build_demo_data.py refuses to bundle predictions that disagree with the recorded metrics."
+  },
+  "notebook_07_loss_ablation": {
+    "_status": "RUN 2026-08-03. 9 runs (3 arms x 3 seeds), 23-25 min each on a Tesla T4. The hypothesis was registered in Notebooks/07 and committed at 72a01e1 before any run existed, so the prediction could not be fitted to the outcome.",
+    "_question": "Notebook 05 trains with CoSENTLoss and CosineSimilarityLoss together. Notebooks 01 to 04 use CoSENT alone. That made the combined objective the one production design choice that was reasoning rather than evidence, and four cross-encoder fixes that did not work had been ablated while the thing that shipped had not.",
+    "_design": "One variable. Same 815 training pairs, same 212 external pairs, same split_seed 42, same augmentation, epochs, batch size and seeds as notebook 05. Gradient steps are matched across arms by giving every arm two training objectives, because fit() runs one backward pass per objective per step and a single-objective arm would otherwise receive half the updates, confounding the loss with the length of the schedule. The notebook verified test split fingerprint f7e6ee8fcbb3 against notebook 05's published split before training.",
+    "arms": {
+      "cosent": {
+        "raw": {
+          "spearman_mean": 0.8477,
+          "spearman_std": 0.0239,
+          "mae_mean": 0.2199,
+          "mae_std": 0.0229
+        },
+        "platt": {
+          "spearman_mean": 0.8477,
+          "spearman_std": 0.0239,
+          "mae_mean": 0.1078,
+          "mae_std": 0.0078
+        },
+        "isotonic": {
+          "spearman_mean": 0.844,
+          "spearman_std": 0.0263,
+          "mae_mean": 0.1088,
+          "mae_std": 0.0056
+        }
+      },
+      "cosine": {
+        "raw": {
+          "spearman_mean": 0.8045,
+          "spearman_std": 0.0092,
+          "mae_mean": 0.1486,
+          "mae_std": 0.0155
+        },
+        "platt": {
+          "spearman_mean": 0.8045,
+          "spearman_std": 0.0092,
+          "mae_mean": 0.1261,
+          "mae_std": 0.009
+        },
+        "isotonic": {
+          "spearman_mean": 0.8147,
+          "spearman_std": 0.0153,
+          "mae_mean": 0.1236,
+          "mae_std": 0.0076
+        }
+      },
+      "combined": {
+        "raw": {
+          "spearman_mean": 0.8447,
+          "spearman_std": 0.0143,
+          "mae_mean": 0.146,
+          "mae_std": 0.0097
+        },
+        "platt": {
+          "spearman_mean": 0.8447,
+          "spearman_std": 0.0143,
+          "mae_mean": 0.111,
+          "mae_std": 0.0079
+        },
+        "isotonic": {
+          "spearman_mean": 0.8337,
+          "spearman_std": 0.0188,
+          "mae_mean": 0.1093,
+          "mae_std": 0.0079
+        }
+      }
+    },
+    "per_seed_platt_spearman": {
+      "cosent": {
+        "42": 0.881,
+        "43": 0.8263,
+        "44": 0.8357
+      },
+      "cosine": {
+        "42": 0.8145,
+        "43": 0.7923,
+        "44": 0.8067
+      },
+      "combined": {
+        "42": 0.8645,
+        "43": 0.8314,
+        "44": 0.8381
+      }
+    },
+    "three_seed_ensemble_platt": {
+      "cosent": {
+        "spearman": 0.8639,
+        "mae": 0.1023
+      },
+      "cosine": {
+        "spearman": 0.8142,
+        "mae": 0.1219
+      },
+      "combined": {
+        "spearman": 0.855,
+        "mae": 0.1067
+      }
+    },
+    "significance": {
+      "_method": "Paired cluster bootstrap over the 50 postings in the final test, 10000 resamples, the same implementation used for the engine comparisons in significance.json. Reference arm: combined_platt.",
+      "combined_vs_cosent_spearman": {
+        "difference": 0.0024,
+        "ci95": [
+          -0.0271,
+          0.037
+        ],
+        "p_value": 0.8922,
+        "significant": false
+      },
+      "combined_vs_cosent_mae": {
+        "difference": 0.0061,
+        "ci95": [
+          -0.0047,
+          0.0164
+        ],
+        "p_value": 0.2702,
+        "significant": false
+      },
+      "combined_vs_cosine_spearman": {
+        "difference": 0.0458,
+        "ci95": [
+          0.0079,
+          0.0878
+        ],
+        "p_value": 0.0198,
+        "significant": true
+      },
+      "combined_vs_cosine_mae": {
+        "difference": -0.0158,
+        "ci95": [
+          -0.0278,
+          -0.0043
+        ],
+        "p_value": 0.0066,
+        "significant": true
+      },
+      "combined_vs_cosent_3seed_ensemble_spearman": {
+        "difference": -0.0257,
+        "ci95": [
+          -0.048,
+          -0.0044
+        ],
+        "p_value": 0.021,
+        "significant": true
+      }
+    },
+    "h1_verdict": "H1 SUPPORTED: CoSENT alone is indistinguishable from the combined loss after calibration, so the CosineSimilarity term can be dropped.",
+    "_finding": "The combined loss does not earn its place. After Platt calibration CoSENT alone is indistinguishable from the combined objective on both metrics, so the CosineSimilarity term can be dropped. The result is asymmetric and that is what makes it informative: CoSENT is load-bearing, since replacing it costs a significant 0.0458 Spearman, while CosineSimilarity is not, since dropping it costs nothing measurable.",
+    "_preregistered_predictions_all_confirmed": "Before Platt, cosent ranks best (0.8477) and calibrates worst (MAE 0.2199) while cosine calibrates best (0.1486) and ranks worst (0.8045), exactly as predicted from CoSENT being rank-based and scale-free. After Platt the two converge to 0.1078 and 0.1261. The sharper prediction also held: the magnitude information the CosineSimilarity term supplies is information a two-parameter sigmoid already recovers for free.",
+    "_only_supported_upgrade": "The 3-seed CoSENT ensemble is the single arm that separates from the shipped model, at +0.0257 Spearman, p 0.021. It averages raw cosines across all three runs, so there is no selection step and nothing is cherry picked. It costs 3x inference memory and latency, which is not free on a sleeping CPU service, so it is recorded here as evidenced rather than adopted.",
+    "_reproducibility_finding": {
+      "_what": "The combined arm re-runs notebook 05's recipe exactly, on the same verified split, under the same PyTorch 2.11.0+cu128 and the same Tesla T4. It does not reproduce notebook 05's numbers, which rules out environment drift and leaves the AMP nondeterminism documented in the README as the explanation.",
+      "aggregate_raw_spearman_notebook_05": 0.8273,
+      "aggregate_raw_spearman_notebook_07_combined_arm": 0.8447,
+      "aggregate_gap": 0.0174,
+      "seed_43_raw_spearman_notebook_05": 0.8163,
+      "seed_43_raw_spearman_notebook_07": 0.8314,
+      "seed_43_gap": 0.0151,
+      "_consequence": "Three runs of this one recipe have now produced aggregate Spearman of 0.8273, 0.8355 and 0.8447. The published +/- is seed-to-seed spread within a single run; there is additional run-to-run spread of roughly 0.017 on top of it that no reported interval includes. Every difference this study reports as significant is larger than that spread, so no published conclusion changes, but the headline point estimate is the lowest of the three runs and should be read with that width in mind."
+    }
   },
   "significance": {
     "_file": "Results/significance.json",

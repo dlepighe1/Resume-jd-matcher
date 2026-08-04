@@ -1,0 +1,163 @@
+{
+  "_what": "Does the combined loss beat its components, tested rather than asserted.",
+  "_method": "Paired cluster bootstrap over postings, the same implementation used for the engine comparisons in significance.json. Every arm scored the identical 106 pairs, and gradient-step count was matched across arms by giving each arm two training objectives, so the only difference is which loss is applied.",
+  "_preregistered_hypothesis": "H1: after Platt calibration, CoSENT alone is indistinguishable from the combined loss, because calibration already recovers the magnitude information the CosineSimilarity term supplies. Registered in Notebooks/07 before the runs.",
+  "reference_arm": "combined_platt",
+  "n_pairs": 106,
+  "n_postings": 50,
+  "resamples": 10000,
+  "seed": 42,
+  "comparisons": [
+    {
+      "metric": "spearman",
+      "a": "combined_platt",
+      "b": "combined_ensemble_raw",
+      "a_value": 0.8381,
+      "b_value": 0.855,
+      "difference": -0.0169,
+      "ci95": [
+        -0.0404,
+        0.0043
+      ],
+      "p_value": 0.1158,
+      "n_effective_resamples": 10000,
+      "significant": false
+    },
+    {
+      "metric": "spearman",
+      "a": "combined_platt",
+      "b": "combined_raw",
+      "a_value": 0.8381,
+      "b_value": 0.8381,
+      "difference": 0.0,
+      "ci95": [
+        0.0,
+        0.0
+      ],
+      "p_value": 1.0,
+      "n_effective_resamples": 10000,
+      "significant": false
+    },
+    {
+      "metric": "spearman",
+      "a": "combined_platt",
+      "b": "cosent_ensemble_raw",
+      "a_value": 0.8381,
+      "b_value": 0.8638,
+      "difference": -0.0257,
+      "ci95": [
+        -0.048,
+        -0.0044
+      ],
+      "p_value": 0.021,
+      "n_effective_resamples": 10000,
+      "significant": true
+    },
+    {
+      "metric": "spearman",
+      "a": "combined_platt",
+      "b": "cosent_platt",
+      "a_value": 0.8381,
+      "b_value": 0.8357,
+      "difference": 0.0024,
+      "ci95": [
+        -0.0271,
+        0.037
+      ],
+      "p_value": 0.8922,
+      "n_effective_resamples": 10000,
+      "significant": false
+    },
+    {
+      "metric": "mae",
+      "a": "combined_platt",
+      "b": "cosent_platt",
+      "a_value": 0.114,
+      "b_value": 0.1079,
+      "difference": 0.0061,
+      "ci95": [
+        -0.0047,
+        0.0164
+      ],
+      "p_value": 0.2702,
+      "n_effective_resamples": 10000,
+      "significant": false
+    },
+    {
+      "metric": "spearman",
+      "a": "combined_platt",
+      "b": "cosent_raw",
+      "a_value": 0.8381,
+      "b_value": 0.8357,
+      "difference": 0.0024,
+      "ci95": [
+        -0.0264,
+        0.0373
+      ],
+      "p_value": 0.8728,
+      "n_effective_resamples": 10000,
+      "significant": false
+    },
+    {
+      "metric": "spearman",
+      "a": "combined_platt",
+      "b": "cosine_ensemble_raw",
+      "a_value": 0.8381,
+      "b_value": 0.8142,
+      "difference": 0.0239,
+      "ci95": [
+        -0.0126,
+        0.0619
+      ],
+      "p_value": 0.1956,
+      "n_effective_resamples": 10000,
+      "significant": false
+    },
+    {
+      "metric": "spearman",
+      "a": "combined_platt",
+      "b": "cosine_platt",
+      "a_value": 0.8381,
+      "b_value": 0.7923,
+      "difference": 0.0458,
+      "ci95": [
+        0.0079,
+        0.0878
+      ],
+      "p_value": 0.0198,
+      "n_effective_resamples": 10000,
+      "significant": true
+    },
+    {
+      "metric": "mae",
+      "a": "combined_platt",
+      "b": "cosine_platt",
+      "a_value": 0.114,
+      "b_value": 0.1299,
+      "difference": -0.0158,
+      "ci95": [
+        -0.0278,
+        -0.0043
+      ],
+      "p_value": 0.0066,
+      "n_effective_resamples": 10000,
+      "significant": true
+    },
+    {
+      "metric": "spearman",
+      "a": "combined_platt",
+      "b": "cosine_raw",
+      "a_value": 0.8381,
+      "b_value": 0.7923,
+      "difference": 0.0458,
+      "ci95": [
+        0.0093,
+        0.0886
+      ],
+      "p_value": 0.0136,
+      "n_effective_resamples": 10000,
+      "significant": true
+    }
+  ],
+  "h1_verdict": "H1 SUPPORTED: CoSENT alone is indistinguishable from the combined loss after calibration, so the CosineSimilarity term can be dropped."
+}

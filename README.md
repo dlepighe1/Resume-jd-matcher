@@ -1,5 +1,8 @@
 # ResumeAI: Resume and Job Description Matching
 
+[![tests](https://github.com/dlepighe1/Resume-jd-matcher/actions/workflows/tests.yml/badge.svg)](https://github.com/dlepighe1/Resume-jd-matcher/actions/workflows/tests.yml)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 A fine-tuned sentence-transformer that scores how well a resume fits a job description on a
 calibrated 0 to 1 scale, explains which requirements are covered, and generalizes to job
 postings it has never seen.
@@ -13,15 +16,24 @@ pairs from unseen job postings:
 
 | Metric | Value |
 |---|---|
-| Spearman correlation | **0.8273 ± 0.0236** across three seeds |
-| Mean absolute error | **0.1126 ± 0.0091** |
-| Production seed (43) | 0.8163 Spearman, 95% CI [0.740, 0.864] |
-| Base model before fine-tuning | 0.6246, so fine-tuning contributes **+0.192 Spearman**, 95% CI [+0.108, +0.292] |
 | Precision@1 across 53 unseen postings | **84.9%** (45/53), Wilson 95% CI [73%, 92%], against a 25% random baseline |
+| Spearman correlation | **0.8273 ± 0.0236** across three seeds |
+| Mean absolute error | **0.1194 ± 0.0113**, Platt calibrated, the configuration that ships |
+| Production seed (43) | 0.8163 Spearman, 95% CI [0.740, 0.864] |
+| Against base MPNet | 0.6246, so fine-tuning contributes **+0.192 Spearman**, 95% CI [+0.108, +0.292] |
+| Against Claude Opus 4.5 | **+0.105 Spearman**, 95% CI [+0.020, +0.212], p = 0.012, at 109M parameters |
+| Against TF-IDF | **+0.251 Spearman**, 95% CI [+0.124, +0.404] |
 
 Every gap above is tested rather than asserted. A paired bootstrap that resamples postings
 rather than pairs separates the model from base MPNet, from TF-IDF, from word overlap, and
 from Claude Opus 4.5. See [`Results/significance.json`](Results/significance.json).
+
+The `±` is seed-to-seed spread within one run. Three runs of this identical recipe have
+produced aggregate Spearman of 0.8273, 0.8355 and 0.8447, so there is roughly 0.017 of
+run-to-run spread on top of it that no interval here includes. Every difference reported as
+significant in this repository is larger than that, so no conclusion depends on it, but the
+headline above is the lowest of the three runs. See
+[Reproducibility](#the-run-is-not-bit-reproducible).
 
 > **Verified.** The published checkpoint was re-downloaded and re-scored before these numbers
 > were accepted: it reproduces the run's raw Spearman of 0.8163. Two earlier runs published a
@@ -37,8 +49,9 @@ from Claude Opus 4.5. See [`Results/significance.json`](Results/significance.jso
 | Scope of this repo | [`docs/RESEARCH_SPEC.md`](docs/RESEARCH_SPEC.md) |
 | Product spec (separate repo) | [`docs/SAAS_SPEC.md`](docs/SAAS_SPEC.md) |
 | Significance testing | [`Results/significance.json`](Results/significance.json), `python scripts/significance.py` |
+| Loss ablation | [`Results/loss_ablation_significance.json`](Results/loss_ablation_significance.json), pre-registered, `--ablation` |
 | Reproduce | `python src/train.py` |
-| Tests | 170, all offline: no model downloads, no API calls |
+| Tests | 179, all offline: no model downloads, no API calls. Run on every push |
 
 ---
 
@@ -103,23 +116,44 @@ Acted on the evidence rather than the leaderboard:
 
 - **70% more unique postings.** 815 pairs from 255 postings, up from 500 pairs from 150.
 - **Combined loss.** CoSENT for ranking plus CosineSimilarity for absolute score, on the
-  reasoning that the model should receive gradient signal in both directions. *This is the
-  one design choice here that is reasoning rather than evidence.* `Notebooks/07` tests it.
+  reasoning that the model should receive gradient signal in both directions. This was the
+  one design choice here that was reasoning rather than evidence. `Notebooks/07` has since
+  tested it, and **the reasoning did not survive**: after calibration the CosineSimilarity
+  term contributes nothing measurable and can be dropped. See section 7.
 - **Calibration fitted on external data.** The 212 external pairs split 106 for calibration
   and 106 for the final test. Every reported number comes from the untouched half.
 - **Production discipline.** Three seeds reported as mean and standard deviation, a
   base-model baseline on the same held-out pairs, bootstrap 95% confidence intervals, and
   precision@1 across the unseen postings.
 
-On seeding: `set_seed()` covers `random`, `numpy`, `torch`, `torch.cuda`, and sets
-`cudnn.deterministic`. That is not enough for bit-reproducibility, and the README used to
-imply otherwise. `fit()` runs with `use_amp=True`, and the gradient scaler adapts to observed
-overflows, so re-running an identical config gives slightly different weights. Two full runs
-of this pipeline produced aggregate Spearman of 0.8355 and 0.8273, a gap of 0.35 standard
-deviations of the seed spread. The cross-encoder in the same notebook, which does not use
-AMP, reproduced bit-for-bit across both runs. Dropping AMP would buy exact reproducibility at
-roughly twice the training time. The three-seed protocol exists precisely because the run is
-not deterministic.
+#### The run is not bit-reproducible
+
+`set_seed()` covers `random`, `numpy`, `torch`, `torch.cuda`, and sets `cudnn.deterministic`.
+That is not enough for bit-reproducibility, and the README used to imply otherwise. `fit()`
+runs with `use_amp=True`, and the gradient scaler adapts to observed overflows, so re-running
+an identical config gives slightly different weights. The cross-encoder in the same notebook,
+which does not use AMP, reproduced bit-for-bit across runs. Dropping AMP would buy exact
+reproducibility at roughly twice the training time. The three-seed protocol exists precisely
+because the run is not deterministic.
+
+Notebook 07 measured how much this costs, because its `combined` arm re-runs this exact
+recipe as a control:
+
+| Run of the identical recipe | Aggregate Spearman | Seed 43 alone |
+|---|---|---|
+| Notebook 05, first run | 0.8355 ± 0.0144 | |
+| Notebook 05, published run | 0.8273 ± 0.0236 | 0.8163 |
+| Notebook 07, `combined` arm | 0.8447 ± 0.0143 | 0.8314 |
+
+Same 815 pairs, same `split_seed`, same seeds, same PyTorch 2.11.0+cu128, same Tesla T4, and
+notebook 07 verified its test-split fingerprint against notebook 05's before training. So the
+spread is not environment drift and not a different split. A fixed seed moves the result by
+about 0.015, and the three-seed aggregate moves by about 0.017 between runs.
+
+The consequence is stated rather than buried: the published `±` is within-run seed spread and
+does not include this. Every difference this study calls significant is several times larger
+than 0.017, so nothing in the conclusions turns on it, and the published headline happens to
+be the lowest of the three runs.
 
 Results on the 106-pair final test:
 
@@ -189,23 +223,14 @@ never predicts above 0.852 while labels reach 0.945. Ranking is unaffected, whic
 precision@1 holds at 84.9% while absolute error on strong pairs is the worst of any group.
 The practical consequence: read the output as a ranking signal, not as a percentage fit.
 
-### 7. Does the combined loss earn its place? (`Notebooks/07`)
-
-Status: written and pre-registered, not yet run.
+### 7. The combined loss does not earn its place (`Notebooks/07`)
 
 Notebook 05 trains with `CoSENTLoss` and `CosineSimilarityLoss` together. Notebooks 01 to 04
-use CoSENT alone. That makes the combined objective the one architectural decision separating
-the production model from the exploratory study, and until this notebook runs it is asserted
-rather than tested. Four cross-encoder fixes that did not work were ablated; the thing that
-shipped was not.
+use CoSENT alone. That made the combined objective the one architectural decision separating
+the production model from the exploratory study, and it was asserted rather than tested. Four
+cross-encoder fixes that did not work were ablated; the thing that shipped was not.
 
-Three arms, three seeds each, on the identical 106-pair final test:
-
-| Arm | Objective 1 | Objective 2 |
-|---|---|---|
-| `cosent` | CoSENT | CoSENT |
-| `cosine` | CosineSimilarity | CosineSimilarity |
-| `combined` | CoSENT | CosineSimilarity |
+It has now been tested, and it lost.
 
 **Every arm gets two dataloaders on purpose.** `fit()` runs one backward pass per objective
 per step, so a two-objective arm receives twice the gradient updates of a one-objective arm.
@@ -213,23 +238,60 @@ Comparing them directly would confound the loss with twice the optimisation, and
 the combined arm might be nothing more than a longer schedule. Matching the objective count
 holds steps, data exposure, and warmup identical so that only the loss differs.
 
-**The hypothesis is registered in the notebook before the runs.** CoSENT is rank-based and
-scale-free, so it should rank well and calibrate badly, which is what notebook 01 saw.
-The sharper prediction: an oracle calibrator fitted directly on the test set (a ceiling, not
-a reportable metric) leaves only 0.019 MAE recoverable beyond Platt. If calibration already
-extracts the magnitude information, the CosineSimilarity term is redundant and `cosent` plus
-Platt should tie `combined` plus Platt. If that holds, half the loss function comes out.
+| Arm | Objective 1 | Objective 2 | Spearman (Platt) | MAE (Platt) |
+|---|---|---|---|---|
+| `cosent` | CoSENT | CoSENT | **0.8477 ± 0.0239** | **0.1078 ± 0.0078** |
+| `cosine` | CosineSimilarity | CosineSimilarity | 0.8045 ± 0.0092 | 0.1261 ± 0.0090 |
+| `combined` | CoSENT | CosineSimilarity | 0.8447 ± 0.0143 | 0.1110 ± 0.0079 |
 
-The notebook asserts its test split matches the shipped one by fingerprint before training,
-and exports per-pair predictions. The verdict comes from the same paired cluster bootstrap
-used everywhere else:
+Three seeds per arm, on the identical 106-pair final test, whose fingerprint the notebook
+verified against notebook 05's published split before spending any GPU time. The verdict
+comes from the same paired cluster bootstrap used everywhere else in this repository:
+
+| Comparison against `combined` | Difference | 95% CI | p |
+|---|---|---|---|
+| `cosent`, Spearman | +0.0024 | [-0.027, +0.037] | 0.89 |
+| `cosent`, MAE | +0.0061 | [-0.005, +0.016] | 0.27 |
+| `cosine`, Spearman | +0.0458 | [+0.008, +0.088] | 0.020 |
+| `cosine`, MAE | -0.0158 | [-0.028, -0.004] | 0.007 |
+| `cosent` 3-seed ensemble, Spearman | -0.0257 | [-0.048, -0.004] | 0.021 |
+
+**H1 supported. The CosineSimilarity term can be dropped.** After Platt calibration, CoSENT
+alone is indistinguishable from the combined objective on both metrics. Half the loss
+function comes out.
+
+**The result is asymmetric, and that is what makes it informative.** CoSENT is load-bearing:
+replacing it with CosineSimilarity costs a significant 0.0458 Spearman and 0.0158 MAE.
+CosineSimilarity is not: dropping it costs nothing measurable. A symmetric null would have
+said only that the experiment lacked power.
+
+**All three pre-registered predictions held, including the mechanism.** The hypothesis was
+committed before any run existed. CoSENT is rank-based and scale-free, so it should rank well
+and calibrate badly; CosineSimilarity is MSE against the label, so it should do the reverse.
+Before any calibrator runs, that is exactly the picture: `cosent` ranks best at 0.8477 and
+calibrates worst at MAE 0.2199, while `cosine` calibrates best at 0.1486 and ranks worst at
+0.8045. The sharper prediction was that Platt would erase the difference, because an oracle
+calibrator fitted directly on the test set left only 0.019 MAE recoverable beyond Platt. It
+did: after calibration the two land at 0.1078 and 0.1261. The magnitude information the
+CosineSimilarity term supplies is information a two-parameter sigmoid already recovers for
+free.
+
+**The one upgrade the evidence supports is the seed ensemble.** Averaging the raw cosines of
+all three CoSENT runs reaches 0.8639 and is the only arm that separates from the shipped
+model. It uses every run, so there is no selection step and nothing is cherry-picked, unlike
+quoting the best single seed at 0.8810. It also costs 3x inference memory and latency, which
+is not free on a sleeping CPU service, so it is recorded here as evidenced rather than
+adopted.
+
+**What ships, and why it does not change today.** The production checkpoint stays as it is.
+Reshipping for a statistically indistinguishable +0.0024 would violate the standard this
+repository applies to everything else. The CosineSimilarity term comes out of the next
+training run, and the ensemble question is a serving-cost decision rather than a modelling
+one.
 
 ```bash
 python scripts/significance.py --ablation
 ```
-
-All three outcomes are reported, including the one where the shipped design turns out to have
-been unnecessary.
 
 ### Comparison against a frontier LLM
 
@@ -296,7 +358,7 @@ Notebooks/
   01 to 04            The study at 500 pairs from 150 postings, exploratory and unseeded
   05_production       The model that ships: 815 pairs, 3 seeds, CIs, publishes to the Hub
   06_model_audit      Bias audit, non-neural baselines, ablations. CPU only, no training
-  07_loss_ablation    Does the combined loss beat its components. Pre-registered, GPU
+  07_loss_ablation    Does the combined loss beat its components. Pre-registered. It does not
 Data/                 Training and external test CSVs
 docs/DATA_CARD.md     Provenance, label schema, and the limits of what this data supports
 Results/              Charts, per-pair predictions, and results_summary.json
@@ -382,7 +444,7 @@ still works, which is the part with evidence behind it.
 ## Running the tests
 
 ```bash
-pytest                # 107 tests: src/, app/, scripts/, and the scoring service
+pytest                # 116 tests: src/, app/, scripts/, and the scoring service
 cd web && npm test    #  63 tests: providers, benchmark maths, ATS keywords
 ```
 
@@ -400,6 +462,13 @@ The tests that matter most guard invariants that would otherwise fail silently:
 - **The statistics are checked against closed-form references**, not against another call of
   the same code. Wilson intervals are compared with published values, and the bootstrap is run
   on data whose answer is known by construction.
+- **The portfolio card cannot outlive its own numbers.** It fed a public site while quoting a
+  Spearman and a precision@1 from a run that predated the publication check. The expected
+  strings are now derived from `production_results.json` rather than typed, so changing a
+  metric without updating the card fails, and every figure it references must exist on disk.
+- **Conclusions that rest on a null result get re-checked.** "Half the loss function can come
+  out" holds only while CoSENT and the combined objective stay indistinguishable. If a re-run
+  separates them, the test fails and the claim has to be rewritten rather than inherited.
 - The fine-tuned calibrator is never applied to base MPNet, where it would produce confident
   nonsense.
 - Inputs receive the same 350-word preprocessing the model was trained under.
@@ -422,6 +491,14 @@ The tests that matter most guard invariants that would otherwise fail silently:
 - **Report the ablations that failed to test anything.** The preprocessing comparison produced
   two identical numbers, which is a result about the test set rather than about the method.
   Deleting it would have left a claim standing with nothing behind it.
+- **Test the thing that shipped, not only the things that did not.** Four rejected
+  cross-encoder fixes were ablated in detail while the combined loss went into production on
+  an argument. When it was finally tested, the argument did not hold and half the objective
+  came out. The decisions most likely to escape scrutiny are the ones that already worked.
+- **Pre-register the prediction, not just the experiment.** Writing down the expected
+  mechanism before the runs is what turned a null result into an interpretable one: the
+  arms moved exactly as predicted before calibration and converged exactly as predicted
+  after it, so "no difference" meant redundancy rather than insufficient power.
 
 ## Limitations and next steps
 
@@ -443,12 +520,24 @@ Ordered by how much they constrain the conclusions.
 - **106 final-test pairs produce wide intervals.** Differences smaller than the interval width
   are not meaningful, which is why `Results/significance.json` exists rather than a table of
   point estimates.
+- **The run is not bit-reproducible, and the published interval understates that.** Three runs
+  of one recipe span 0.8273 to 0.8447 in aggregate Spearman. See
+  [Reproducibility](#the-run-is-not-bit-reproducible). Dropping AMP would fix it at roughly
+  twice the training cost.
 - **The preprocessing ablation is uninformative** on this test set, since no posting in it is
   long enough to truncate. See notebook 06.
+- **The shipped checkpoint is no longer the best design measured.** Notebook 07 found a
+  3-seed CoSENT ensemble at 0.8639 against the shipped 0.8163, significant at p 0.021. It was
+  not adopted because it triples serving cost, and that trade-off is unresolved rather than
+  settled.
+- **Per-arm precision@1 has not been measured on the full external set.** The ablation
+  exported only the 106-pair final test, which averages two candidates per posting and so is
+  a much easier ranking task than the 53-posting, four-candidate setup the headline 84.9%
+  comes from. The arms should not be compared on precision@1 until that is recomputed.
 - E5 outperformed MPNet in one run of notebook 02 and was not carried forward. It deserves a
   multi-seed re-test.
 - ONNX or quantized export for cheaper CPU serving.
 
 ---
 
-*David Lepighe, April to July 2026. [github.com/dlepighe1](https://github.com/dlepighe1)*
+*David Lepighe, April to August 2026. [github.com/dlepighe1](https://github.com/dlepighe1)*
