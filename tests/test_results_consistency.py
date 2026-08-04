@@ -10,6 +10,7 @@ the summary can be trusted without re-reading the notebooks.
 """
 
 import json
+import re
 from pathlib import Path
 
 import numpy as np
@@ -18,6 +19,7 @@ from scipy.stats import spearmanr
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 RESULTS = REPO_ROOT / "Results"
+PORTFOLIO_CARD = REPO_ROOT / "portfolio" / "resume-jd-matcher.md"
 
 
 def _load(name: str):
@@ -50,6 +52,23 @@ def significance():
 @pytest.fixture(scope="module")
 def demo_pairs():
     return _load("demo_pairs.json")
+
+
+@pytest.fixture(scope="module")
+def ablation():
+    return _load("loss_ablation.json")
+
+
+@pytest.fixture(scope="module")
+def ablation_significance():
+    return _load("loss_ablation_significance.json")
+
+
+@pytest.fixture(scope="module")
+def card():
+    if not PORTFOLIO_CARD.exists():
+        pytest.skip("portfolio card is not present")
+    return PORTFOLIO_CARD.read_text(encoding="utf-8")
 
 
 # ── The published checkpoint is the measured checkpoint ───────────────────────
@@ -165,3 +184,127 @@ def test_calibrator_choice_is_recorded_as_a_tie_not_a_win(summary, production):
         production["calibrator_bootstrap"]["verdict"]
     lo, hi = production["calibrator_bootstrap"]["ci95"]
     assert lo <= 0 <= hi, "the calibrators are now distinguishable; update the rationale"
+
+
+# ── The loss ablation (notebook 07) ───────────────────────────────────────────
+
+def test_ablation_ran_on_the_shipped_test_split(ablation, demo_pairs):
+    """The ablation is only interpretable against notebook 05 if it scored notebook 05's
+    pairs. The notebook checks this by fingerprint before training; this checks the artifact
+    it actually exported, which is the thing the bootstrap consumed."""
+    shipped = {p["id"] for p in demo_pairs["pairs"]}
+    got = {p["id"] for p in ablation["pairs"]}
+    assert got == shipped, (
+        f"{len(got - shipped)} ablation pairs are not in the shipped final test split, so "
+        f"the arm comparisons are not paired against the published model"
+    )
+
+
+def test_summary_ablation_arms_match_the_artifact(summary, ablation):
+    assert summary["notebook_07_loss_ablation"]["arms"] == ablation["aggregate"]
+
+
+def test_summary_ablation_per_seed_matches_the_artifact(summary, ablation):
+    claimed = summary["notebook_07_loss_ablation"]["per_seed_platt_spearman"]
+    for arm in ablation["arms"]:
+        computed = {str(r["seed"]): r["platt"]["spearman"]
+                    for r in ablation["runs"] if r["arm"] == arm}
+        assert claimed[arm] == computed
+
+
+def test_summary_ablation_significance_matches_the_artifact(summary, ablation_significance):
+    by_pair = {(c["b"], c["metric"]): c for c in ablation_significance["comparisons"]}
+    mapping = {
+        "combined_vs_cosent_spearman": ("cosent_platt", "spearman"),
+        "combined_vs_cosent_mae": ("cosent_platt", "mae"),
+        "combined_vs_cosine_spearman": ("cosine_platt", "spearman"),
+        "combined_vs_cosine_mae": ("cosine_platt", "mae"),
+        "combined_vs_cosent_3seed_ensemble_spearman": ("cosent_ensemble_raw", "spearman"),
+    }
+    claims = summary["notebook_07_loss_ablation"]["significance"]
+    for summary_key, key in mapping.items():
+        computed = by_pair[key]
+        claimed = claims[summary_key]
+        assert claimed["difference"] == pytest.approx(computed["difference"], abs=1e-4)
+        assert claimed["p_value"] == pytest.approx(computed["p_value"], abs=1e-4)
+        assert claimed["significant"] == computed["significant"]
+
+
+def test_combined_loss_is_still_recorded_as_redundant(summary, ablation_significance):
+    """The README says half the loss function can come out. That rests on CoSENT alone being
+    indistinguishable from the combined objective on both metrics. If a re-run separates
+    them, this fails and the claim has to be rewritten rather than silently inherited."""
+    by_pair = {(c["b"], c["metric"]): c for c in ablation_significance["comparisons"]}
+    for metric in ("spearman", "mae"):
+        comparison = by_pair[("cosent_platt", metric)]
+        lo, hi = comparison["ci95"]
+        assert lo <= 0 <= hi, (
+            f"combined and cosent are now separable on {metric}; the 'drop the "
+            f"CosineSimilarity term' conclusion no longer follows"
+        )
+    assert "H1 SUPPORTED" in ablation_significance["h1_verdict"]
+    assert summary["notebook_07_loss_ablation"]["h1_verdict"] == \
+        ablation_significance["h1_verdict"]
+
+
+def test_summary_records_the_run_to_run_gap_against_both_artifacts(summary, ablation,
+                                                                   production):
+    """The ablation's combined arm re-runs notebook 05's recipe, so the gap between them is
+    the reproducibility finding. Both halves are transcribed into the summary and both are
+    checked here, because a hand-copied gap is exactly the kind of number that drifts."""
+    finding = summary["notebook_07_loss_ablation"]["_reproducibility_finding"]
+    nb07_seed_43 = next(r["raw"]["spearman"] for r in ablation["runs"]
+                        if r["arm"] == "combined" and r["seed"] == 43)
+
+    assert finding["aggregate_raw_spearman_notebook_05"] == \
+        production["aggregate"]["raw"]["spearman_mean"]
+    assert finding["aggregate_raw_spearman_notebook_07_combined_arm"] == \
+        ablation["aggregate"]["combined"]["raw"]["spearman_mean"]
+    assert finding["seed_43_raw_spearman_notebook_05"] == \
+        production["production"]["raw"]["spearman"]
+    assert finding["seed_43_raw_spearman_notebook_07"] == nb07_seed_43
+    assert finding["aggregate_gap"] == pytest.approx(
+        finding["aggregate_raw_spearman_notebook_07_combined_arm"]
+        - finding["aggregate_raw_spearman_notebook_05"], abs=1e-4)
+
+
+# ── The portfolio card is a published surface, so it drifts like any other ────
+
+def test_portfolio_card_cites_the_current_headline(card, production, significance):
+    """This card feeds the public site and was the last surface no test covered. It sat for
+    weeks advertising 0.8355 Spearman and 94.3% precision@1 from a run that predated the
+    publication check, while Results/ said otherwise. Expected strings are derived from the
+    artifacts, so changing a number without updating the card fails here."""
+    spearman = production["aggregate"]["raw"]["spearman_mean"]
+    mae = production["aggregate"]["platt"]["mae_mean"]
+    precision = production["ranking"]["precision_at_1"]
+    vs_claude = next(c["difference"] for c in significance["comparisons"]
+                     if c["b"] == "claude" and c["metric"] == "spearman")
+
+    for expected, label in (
+        (f"{spearman:.4f}", "aggregate Spearman"),
+        (f"{mae:.4f}", "aggregate Platt MAE"),
+        (f"{precision * 100:.1f}%", "precision@1"),
+        (f"{vs_claude:.3f}", "Spearman gain over Claude"),
+    ):
+        assert expected in card, f"portfolio card does not cite the current {label} ({expected})"
+
+
+def test_portfolio_card_has_no_superseded_headline_metrics(card):
+    """Every string here was a headline figure on this card that Results/ had already
+    superseded. They came from runs whose published checkpoint was never verified."""
+    for stale in ("0.8355", "0.1145", "94.3", "+0.211"):
+        assert stale not in card, (
+            f"{stale} is a superseded figure from a pre-verification run and should not "
+            f"appear on the portfolio card"
+        )
+
+
+def test_portfolio_card_only_references_figures_that_exist(card):
+    """`05_production_v2_fig1.png` was renamed to `..._LEGACY.png` and the card kept
+    pointing at the old name, so the gallery would have rendered broken images."""
+    referenced = set(re.findall(r"^\s*(?:-|trainingCurve:)\s*([\w.\-]+\.png)\s*(?:#.*)?$",
+                                card, re.MULTILINE))
+    assert referenced, "no figures referenced; the regex or the card format changed"
+    for name in sorted(referenced):
+        assert (RESULTS / name).exists(), f"portfolio card references missing figure {name}"
