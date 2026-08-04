@@ -1,0 +1,51 @@
+name: tests
+
+# The suites are fully offline: no test downloads a model, calls an API, or touches a
+# network. That is what makes running them on every push cheap enough to be worth doing.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  python:
+    name: pytest (src, app, scripts, service)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # CPU-only torch first. The CUDA wheel is ~2.5 GB and nothing here trains.
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements.txt -r service/requirements.txt
+
+      - name: Run tests
+        run: pytest -q
+
+  web:
+    name: vitest (providers, benchmark maths, ATS keywords)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
