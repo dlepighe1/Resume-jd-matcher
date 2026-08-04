@@ -8,9 +8,15 @@ product: an HTTP scoring service. The product repository consumes that service a
 everything else. Neither repository imports the other's source.
 
 **Status of the model dependency.** The scoring model is a fine-tuned sentence-transformer
-measured at 0.8273 ± 0.0236 Spearman and 0.1126 ± 0.0091 mean absolute error across three
-seeds on 106 held-out pairs from unseen job postings. Its precision@1 across 53 unseen
-postings is 84.9%, with a 95% interval of 73% to 92%, against a 25% random baseline.
+measured at 0.8273 ± 0.0236 Spearman and 0.1194 ± 0.0113 mean absolute error across three
+seeds on 106 held-out pairs from unseen job postings, under the Platt calibrator that ships.
+Its precision@1 across 53 unseen postings is 84.9%, with a 95% interval of 73% to 92%,
+against a 25% random baseline.
+
+Read the `±` as within-run seed spread. Three runs of the identical recipe have produced
+aggregate Spearman of 0.8273, 0.8355 and 0.8447, so there is roughly 0.017 of additional
+run-to-run variation. Product copy should not quote a precision the evaluation does not
+support.
 
 Two constraints on product copy follow from the evaluation, and both are load-bearing:
 
