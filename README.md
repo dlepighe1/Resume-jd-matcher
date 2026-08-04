@@ -47,7 +47,7 @@ headline above is the lowest of the three runs. See
 | Research notebooks | [`Notebooks/`](Notebooks/), 01 to 05 in story order, plus an audit and an ablation |
 | Data card | [`docs/DATA_CARD.md`](docs/DATA_CARD.md) |
 | Scope of this repo | [`docs/RESEARCH_SPEC.md`](docs/RESEARCH_SPEC.md) |
-| Product spec (separate repo) | [`docs/SAAS_SPEC.md`](docs/SAAS_SPEC.md) |
+| Product built on this model | [Job-hunterAI](https://github.com/dlepighe1/Job-hunterAI), a separate repository. Its spec lives there |
 | Significance testing | [`Results/significance.json`](Results/significance.json), `python scripts/significance.py` |
 | Loss ablation | [`Results/loss_ablation_significance.json`](Results/loss_ablation_significance.json), pre-registered, `--ablation` |
 | Reproduce | `python src/train.py` |

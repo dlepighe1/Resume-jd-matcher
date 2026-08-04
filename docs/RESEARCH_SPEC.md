@@ -6,7 +6,8 @@ What this repository is for, what it contains, and what it deliberately does not
 
 This repository holds the study, the data, the model pipeline, and a single demo page for
 inspecting the results. It is research. The product built on top of the model lives in a
-separate repository and is specified in [`SAAS_SPEC.md`](SAAS_SPEC.md).
+separate repository, [Job-hunterAI](https://github.com/dlepighe1/Job-hunterAI), and is
+specified there in its `docs/SPEC.md`.
 
 The boundary is one HTTP contract. This repository publishes a scoring service. The product
 consumes it. Neither imports the other's source.

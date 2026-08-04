@@ -5,7 +5,7 @@ held-out benchmark, and the evidence behind both.
 
 This directory contains no product features. Authentication, persistence, and the multi-page
 application were removed when this repository became research-only. The SaaS built on top of
-this model lives in its own repository; see `docs/SAAS_SPEC.md` at the repository root.
+this model lives in its own repository, [Job-hunterAI](https://github.com/dlepighe1/Job-hunterAI).
 
 ## Running it
 
