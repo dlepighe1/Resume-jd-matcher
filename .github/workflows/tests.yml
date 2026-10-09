@@ -28,6 +28,11 @@ jobs:
           pip install torch --index-url https://download.pytorch.org/whl/cpu
           pip install -r requirements.txt -r service/requirements.txt
 
+      - name: Lint
+        run: |
+          pip install ruff==0.12.4
+          ruff check .
+
       - name: Run tests
         run: pytest -q
 
@@ -47,5 +52,6 @@ jobs:
           cache-dependency-path: web/package-lock.json
 
       - run: npm ci
+      - run: npm run lint
       - run: npm test
       - run: npm run build

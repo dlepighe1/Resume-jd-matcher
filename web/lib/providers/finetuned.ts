@@ -1,9 +1,10 @@
 import { env } from "@/lib/env";
 import { AnalyzeError } from "@/lib/errors";
+import { serviceHeaders } from "@/lib/providers/service";
 import { PROVIDER_META, type AnalysisResult, type RequirementStatus } from "@/lib/types";
 
-/** Free HuggingFace Spaces sleep when idle; the first request has to wake the
- *  container and load ~420 MB of weights. */
+/** A host that sleeps when idle (Railway serverless, a free HuggingFace Space) has to
+ *  wake the container and load ~420 MB of weights on the first request. */
 const TIMEOUT_MS = 120_000;
 
 /**
@@ -40,6 +41,7 @@ interface ScoreResponse {
 export async function analyzeWithFineTuned(
   jobDescription: string,
   resumeText: string,
+  clientIp?: string,
 ): Promise<AnalysisResult> {
   const baseUrl = env.scoringService.url.replace(/\/$/, "");
   const startedAt = Date.now();
@@ -48,7 +50,7 @@ export async function analyzeWithFineTuned(
   try {
     response = await fetch(`${baseUrl}/score`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: serviceHeaders(clientIp),
       body: JSON.stringify({ resume: resumeText, jd: jobDescription }),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });

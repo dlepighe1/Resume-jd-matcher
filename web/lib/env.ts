@@ -46,8 +46,13 @@ export const env = {
     get url() {
       return required(
         "SCORING_SERVICE_URL",
-        "Point this at the Python scoring service (http://localhost:8000 locally, or your HuggingFace Space URL).",
+        "Point this at the Python scoring service (http://localhost:8000 locally, or your Railway service URL).",
       );
+    },
+    /** Shared with the service's PROXY_SECRET. Optional: without it the service rate
+     *  limits every visitor as one client, which still works, just less fairly. */
+    get secret() {
+      return process.env.SCORING_SERVICE_SECRET?.trim() || undefined;
     },
     /** Whether the service is configured at all. The demo degrades to the precomputed
      *  benchmark rather than erroring when it isn't. */

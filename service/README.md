@@ -42,15 +42,25 @@ Applying one to base MPNet would produce confident, well-formatted nonsense, so 
 service drops it and says so, rather than serving a number that looks trustworthy and
 isn't.
 
-## Deploy to a HuggingFace Space
+## Deploy to Railway
 
-1. Create a Space with the **Docker** SDK.
-2. Push this repo to it. The root `Dockerfile` builds the service and listens on 7860.
-3. Set `SCORING_SERVICE_URL` in Vercel to the Space URL.
+The root `Dockerfile` builds this service, and the root `railway.toml` configures the
+deploy: build from the Dockerfile, gate traffic on `/health`, and rebuild only when
+`service/`, `src/`, `app/`, the calibrators, or the Dockerfile change.
 
-Free Spaces sleep when idle, so the first request after a quiet period pays a cold start
-(container wake + weight load). The web app's fine-tuned provider allows 120s for this
-and surfaces `MODEL_SERVICE_UNREACHABLE` rather than a generic spinner-that-never-ends.
+The image installs CPU-only PyTorch and bakes both the fine-tuned model and base MPNet
+in at build time, so a container start reads weights from disk instead of downloading
+~840 MB from the Hub. It listens on `$PORT`, which Railway sets.
+
+| Service variable | Purpose |
+|---|---|
+| `PROXY_SECRET` | Shared with `SCORING_SERVICE_SECRET` on Vercel. When it matches, the service rate limits on the visitor address the web app forwards in `X-Client-IP` |
+| `RATE_LIMIT_REQUESTS` / `RATE_LIMIT_WINDOW_SECONDS` | Default 30 per 60 s per visitor |
+| `MODEL_ID` | Only change it as a build variable too, or the new model is downloaded at every start |
+
+Without `PROXY_SECRET`, every request from the web app arrives from Vercel's servers and
+all visitors share one budget. Direct callers (anyone who skips the web app) are always
+keyed on the socket address, so they cannot buy a fresh budget by inventing headers.
 
 ## A note on TLS
 

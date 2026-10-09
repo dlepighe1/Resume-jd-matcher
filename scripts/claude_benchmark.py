@@ -69,7 +69,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
 import sys
 import threading
@@ -180,7 +179,7 @@ _TIERS = ("modern", "structured", "plain")
 
 def _call(client, model: str, effort: str, row: pd.Series, tier: str):
     content = user_prompt(str(row["jd"]), str(row["resume"]))
-    kwargs = dict(model=model, max_tokens=8192, system=SYSTEM_PROMPT)
+    kwargs = {"model": model, "max_tokens": 8192, "system": SYSTEM_PROMPT}
     if tier == "modern":
         kwargs["thinking"] = {"type": "adaptive"}
         kwargs["output_config"] = {
@@ -345,7 +344,7 @@ def main() -> None:
     preds = [r["claude_pred"] for r in scored]
     labels = [r["label"] for r in scored]
     spearman, _ = spearmanr(labels, preds)
-    mae = sum(abs(p - t) for p, t in zip(preds, labels)) / len(scored)
+    mae = sum(abs(p - t) for p, t in zip(preds, labels, strict=False)) / len(scored)
 
     summary = {
         "model": args.model,

@@ -1,0 +1,23 @@
+# Railway config for the scoring service. The web app is deployed separately on Vercel.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+# Rebuild only when something the image contains changes. Without this, every commit to
+# web/, Notebooks/ or docs/ would rebuild a multi-GB image for nothing.
+watchPatterns = [
+  "Dockerfile",
+  "railway.toml",
+  "service/**",
+  "src/**",
+  "app/**",
+  "models/*.pkl",
+]
+
+[deploy]
+# Railway switches traffic to a new deploy only once this returns 200. The model loads
+# before uvicorn starts serving, so a 200 here means the model is in memory.
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

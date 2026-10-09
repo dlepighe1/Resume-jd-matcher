@@ -2,7 +2,7 @@
  "model_id": "dlepighe1/resume-jd-matcher-mpnet",
  "n_pairs": 106,
  "n_postings": 50,
- "split": "external final test \u2014 106 pairs, unseen postings, untouched by calibration",
+ "split": "external final test: 106 pairs, unseen postings, untouched by calibration",
  "metrics": {
   "production": {
    "spearman": 0.8163,

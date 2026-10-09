@@ -1,20 +1,26 @@
-# Python scoring service — serves the fine-tuned MPNet + Platt calibrator over HTTP.
-# Deployed as a HuggingFace Space (Docker SDK); Next.js calls it via SCORING_SERVICE_URL.
+# Python scoring service. Serves the fine-tuned MPNet + Platt calibrator over HTTP.
+# Deployed on Railway from the root Dockerfile; Next.js calls it via SCORING_SERVICE_URL.
+# The Dockerfile installs the CPU build of torch first, from PyTorch's own index.
 #
-# The service imports the model code that already lives in this repo — src/text_utils.py
+# The service imports the model code that already lives in this repo: src/text_utils.py
 # (the exact preprocessing the model was trained under) and app/explain.py (skill-gap
-# analysis) — so the served scores match the research numbers rather than reimplementing
+# analysis), so the served scores match the research numbers rather than reimplementing
 # the pipeline and drifting from them.
+#
+# Pinned for the same reason requirements.txt is: the whole argument for this service is
+# that it returns the numbers the study measured, and a floating dependency range is a
+# silent way for that to stop being true between one deploy and the next.
 
-fastapi>=0.115
-uvicorn[standard]>=0.30
-pydantic>=2.7
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.11.7
 
-sentence-transformers>=2.7
-torch>=2.0
-scikit-learn>=1.3
-scipy>=1.11
-numpy>=1.26
+sentence-transformers==5.6.0
+transformers==5.13.0
+torch==2.7.1
+scikit-learn==1.7.1
+scipy==1.16.1
+numpy==2.2.6
 
-httpx>=0.27          # FastAPI TestClient
-pytest>=8.0
+httpx==0.28.1        # FastAPI TestClient
+pytest==8.3.4

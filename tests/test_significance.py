@@ -66,7 +66,9 @@ def test_wilson_handles_an_empty_sample():
 
 
 def test_wilson_narrows_as_the_sample_grows():
-    width = lambda h, n: sig.wilson(h, n)[1] - sig.wilson(h, n)[0]
+    def width(h, n):
+        return sig.wilson(h, n)[1] - sig.wilson(h, n)[0]
+
     assert width(45, 53) > width(450, 530) > width(4500, 5300)
 
 
@@ -106,7 +108,9 @@ def test_resampling_unit_is_the_posting_not_the_pair():
     b = sig.cluster_bootstrap(_pairs(duplicated), "a", "b", "spearman", 800,
                               np.random.default_rng(3))
 
-    width = lambda o: o["ci95"][1] - o["ci95"][0]
+    def width(o):
+        return o["ci95"][1] - o["ci95"][0]
+
     assert width(b) == pytest.approx(width(a), abs=0.05)
 
 
@@ -134,6 +138,183 @@ def test_degenerate_resamples_are_dropped_rather_than_poisoning_the_estimate():
                                 np.random.default_rng(5))
     assert np.isfinite(out["ci95"]).all()
     assert out["n_effective_resamples"] > 0
+
+
+# ── Holm-Bonferroni ───────────────────────────────────────────────────────────
+# Checked by hand against the definition, not against another call of the same code.
+
+def test_holm_matches_a_hand_computed_reference():
+    """Sorted: 0.01*3 = 0.03, 0.03*2 = 0.06, 0.04*1 = 0.04 which is raised to 0.06 by the
+    monotonicity step. Returned in the caller's order, not sorted order."""
+    assert sig.holm_bonferroni([0.01, 0.04, 0.03]) == pytest.approx([0.03, 0.06, 0.06])
+
+
+def test_holm_is_never_more_lenient_than_the_raw_p_value():
+    raw = [0.001, 0.02, 0.03, 0.049, 0.4]
+    assert all(a >= r for a, r in zip(sig.holm_bonferroni(raw), raw, strict=False))
+
+
+def test_holm_is_uniformly_more_powerful_than_bonferroni():
+    """The reason Holm is used rather than plain Bonferroni. Only the smallest p-value is
+    multiplied by the full family size; every other one gets a smaller multiplier."""
+    raw = [0.004, 0.011, 0.02, 0.04]
+    adjusted = sig.holm_bonferroni(raw)
+    bonferroni = [min(1.0, p * len(raw)) for p in raw]
+    assert all(a <= b for a, b in zip(adjusted, bonferroni, strict=False))
+    assert any(a < b for a, b in zip(adjusted, bonferroni, strict=False))
+
+
+def test_holm_is_monotone_along_the_sorted_order():
+    """A step-down procedure is incoherent if a larger raw p-value can adjust below a
+    smaller one, which is exactly what happens without the running maximum."""
+    raw = [0.001, 0.049, 0.05, 0.051, 0.9]
+    adjusted = sig.holm_bonferroni(raw)
+    by_raw = [a for _, a in sorted(zip(raw, adjusted, strict=False))]
+    assert by_raw == sorted(by_raw)
+
+
+def test_holm_caps_at_one_and_handles_an_empty_family():
+    assert sig.holm_bonferroni([0.5, 0.6, 0.9]) == [1.0, 1.0, 1.0]
+    assert sig.holm_bonferroni([]) == []
+
+
+def test_holm_leaves_a_single_test_untouched():
+    assert sig.holm_bonferroni([0.031]) == pytest.approx([0.031])
+
+
+# ── Families ──────────────────────────────────────────────────────────────────
+
+def _comparison(b, metric, p, a="combined_platt", ci=(0.01, 0.05), ci90=(0.015, 0.045)):
+    return {"a": a, "b": b, "metric": metric, "p_value": p, "ci95": list(ci),
+            "ci90": list(ci90), "significant": ci[0] > 0 or ci[1] < 0,
+            "min_detectable_effect_80pct_power": 0.03}
+
+
+def test_raw_spearman_is_marked_redundant_with_its_calibrated_twin():
+    """Platt is a strictly increasing sigmoid and Spearman depends only on ranks, so an
+    arm's raw and calibrated Spearman are the same number by construction. Counting both
+    would charge every real comparison for an algebraic identity."""
+    comparisons = [_comparison("cosent_platt", "spearman", 0.02),
+                   _comparison("cosent_raw", "spearman", 0.02)]
+    sig.classify_families(comparisons, primary=set())
+    assert comparisons[0]["family"] != "redundant"
+    assert comparisons[1]["family"] == "redundant"
+
+
+def test_the_reference_arm_compared_against_itself_is_redundant():
+    comparisons = [_comparison("combined_raw", "spearman", 1.0)]
+    sig.classify_families(comparisons, primary=set())
+    assert comparisons[0]["family"] == "redundant"
+
+
+def test_mae_is_never_redundant_because_calibration_moves_it():
+    """The whole point of the calibrator is that it changes MAE while leaving ranks alone,
+    so the raw/calibrated MAE comparisons are genuinely different tests."""
+    comparisons = [_comparison("cosent_platt", "mae", 0.2),
+                   _comparison("cosent_raw", "mae", 0.2)]
+    sig.classify_families(comparisons, primary=set())
+    assert all(c["family"] != "redundant" for c in comparisons)
+
+
+def test_ensembles_are_not_mistaken_for_redundant_raw_arms():
+    """`cosent_ensemble_raw` also ends in `_raw`, but it is a different model, not the
+    uncalibrated view of one already in the family."""
+    comparisons = [_comparison("cosent_platt", "spearman", 0.02),
+                   _comparison("cosent_ensemble_raw", "spearman", 0.02)]
+    sig.classify_families(comparisons, primary=set())
+    assert comparisons[1]["family"] == "secondary"
+
+
+def test_redundant_rows_take_no_share_of_the_correction():
+    """The load-bearing property. Four algebraic restatements in the ablation would inflate
+    the family by 40% and could bury a real effect under a correction it never earned."""
+    real = [_comparison("cosine_platt", "mae", 0.0066),
+            _comparison("cosent_platt", "mae", 0.27),
+            _comparison("cosine_platt", "spearman", 0.0198)]
+    # The same three tests, plus the algebraic restatements the export also contains.
+    padded = real + [_comparison("cosine_raw", "spearman", 0.0198),
+                     _comparison("combined_raw", "spearman", 1.0)]
+
+    a = sig.annotate_family([dict(c) for c in real], {}, n_postings=50)
+    b = sig.annotate_family([dict(c) for c in padded], {}, n_postings=50)
+    assert [c["p_value_holm"] for c in a] == [c["p_value_holm"] for c in b[:3]]
+    assert [c["family"] for c in b[3:]] == ["redundant", "redundant"]
+
+
+def test_a_raw_comparison_without_its_calibrated_twin_is_a_real_test():
+    """The redundancy rule keys off the twin actually being present. An export that only
+    ever measured the uncalibrated arm has tested something, and dropping it from the
+    family would under-correct."""
+    comparisons = [_comparison("cosine_raw", "spearman", 0.02)]
+    sig.classify_families(comparisons, primary=set())
+    assert comparisons[0]["family"] == "secondary"
+
+
+def test_primary_and_secondary_are_corrected_separately():
+    """A pre-registered hypothesis is not discounted for the exploratory comparisons that
+    happened to run alongside it."""
+    comparisons = [_comparison("cosent_platt", "mae", 0.02),
+                   _comparison("cosine_platt", "mae", 0.02),
+                   _comparison("cosine_platt", "spearman", 0.02)]
+    sig.annotate_family(comparisons, {}, n_postings=50,
+                        primary={("cosent_platt", "mae")})
+
+    assert comparisons[0]["family"] == "primary"
+    assert comparisons[0]["p_value_holm"] == pytest.approx(0.02)   # alone in its family
+    assert comparisons[1]["p_value_holm"] == pytest.approx(0.04)   # one of two
+
+
+# ── Equivalence, power, and the three-way verdict ─────────────────────────────
+
+def test_equivalence_needs_the_90_percent_interval_inside_the_margin():
+    inside = _comparison("x", "mae", 0.5, ci=(-0.02, 0.02), ci90=(-0.005, 0.006))
+    outside = _comparison("x", "mae", 0.5, ci=(-0.05, 0.05), ci90=(-0.03, 0.03))
+    assert sig.equivalence(inside, 0.01)["equivalent"]
+    assert not sig.equivalence(outside, 0.01)["equivalent"]
+
+
+def test_equivalence_is_not_claimed_without_a_margin():
+    """No margin means no answer. Defaulting to a round number would make every
+    equivalence claim in the study rest on a guess nobody wrote down."""
+    out = sig.equivalence(_comparison("x", "mae", 0.5), None)
+    assert out["tested"] is False
+    assert "equivalent" not in out
+
+
+def test_a_wide_interval_is_inconclusive_rather_than_equivalent():
+    """The distinction the whole addition exists for: failing to detect a difference on 50
+    postings is not evidence that there is none."""
+    comparisons = [_comparison("cosent_platt", "spearman", 0.89,
+                               ci=(-0.027, 0.037), ci90=(-0.022, 0.031))]
+    sig.annotate_family(comparisons, {"spearman": 0.0174}, n_postings=50)
+    assert comparisons[0]["verdict"] == "inconclusive"
+    assert not comparisons[0]["equivalence"]["equivalent"]
+
+
+def test_a_tight_interval_around_zero_is_reported_as_equivalent():
+    comparisons = [_comparison("x", "spearman", 0.8, ci=(-0.01, 0.01), ci90=(-0.008, 0.008))]
+    sig.annotate_family(comparisons, {"spearman": 0.0174}, n_postings=50)
+    assert comparisons[0]["verdict"] == "equivalent"
+
+
+def test_minimum_detectable_effect_follows_the_bootstrap_spread():
+    """MDE = (z_alpha + z_power) * SE, the standard two-sided 5% / 80% power expression."""
+    rows = [(f"p{i}", i / 20, i / 20 + 0.01, 0.5) for i in range(20)]
+    out = sig.cluster_bootstrap(_pairs(rows), "a", "b", "mae", 600, np.random.default_rng(7))
+    expected = (sig.Z_ALPHA + sig.Z_POWER) * out["bootstrap_se"]
+    assert out["min_detectable_effect_80pct_power"] == pytest.approx(expected, abs=1e-4)
+
+
+def test_postings_needed_scales_with_the_square_of_the_ratio():
+    """SE falls as 1/sqrt(clusters), so halving the detectable effect costs 4x the data."""
+    comparison = {"min_detectable_effect_80pct_power": 0.04}
+    assert sig.postings_needed(comparison, margin=0.02, n_postings=50) == 200
+    assert sig.postings_needed(comparison, margin=0.01, n_postings=50) == 800
+
+
+def test_no_extra_data_is_demanded_when_the_study_is_already_precise_enough():
+    comparison = {"min_detectable_effect_80pct_power": 0.005}
+    assert sig.postings_needed(comparison, margin=0.02, n_postings=50) is None
 
 
 # ── Which metrics are allowed for which engine ────────────────────────────────

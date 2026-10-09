@@ -16,11 +16,24 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.text_utils import extract_requirements, split_sentences
 
 # Cosine-similarity bands between a requirement and its best resume sentence.
-# Heuristic thresholds chosen on the external test pairs; embeddings from the
-# fine-tuned model separate matched/unmatched requirements more sharply than
-# base MPNet, so these are deliberately conservative.
-COVERED_THRESHOLD = 0.50
-PARTIAL_THRESHOLD = 0.35
+#
+# These were 0.50 and 0.35, hand-picked, with no measurement behind them. They are now
+# swept on the 106-pair external CALIBRATION half and reported on the untouched 106-pair
+# final test, the same discipline the score calibrator follows. Moving them cost the old
+# pair 0.0833 Spearman and 0.0518 AUC against the match label on data neither pair was
+# chosen on, both intervals excluding zero. See scripts/eval_explanations.py and
+# Results/explanation_eval.json.
+#
+# The old values were too low because the fine-tuned model pushes related text well above
+# the cosine floor that any two English documents share, so 0.50 marked as "covered" a
+# great deal that merely sat in the same domain as the requirement.
+#
+# Scope of the evidence, because it is narrower than the change: what was measured is the
+# aggregate coverage number, not whether an individual requirement was correctly banded.
+# Grading that needs a human to read the requirement against the sentence cited for it, and
+# no such labels exist in this repository.
+COVERED_THRESHOLD = 0.65
+PARTIAL_THRESHOLD = 0.55
 
 
 @dataclass

@@ -1,0 +1,199 @@
+{
+  "_what": "Whether the synthetic resumes leak the phrasing of the postings they were written against, which would inflate every result in this repository.",
+  "_method": "Own-posting n-gram overlap against a same-industry control posting, so domain vocabulary is held roughly constant and what remains at long n is copying. Plus posting-unique term leakage, and a rank partial correlation asking whether the model's agreement with the label survives removing lexical overlap. Intervals from a cluster bootstrap over postings.",
+  "_scope": "Measured on the 212-pair external set, which is what the study reports on. Term uniqueness is computed over training and external postings together.",
+  "_limitation": "This compares synthetic pairs against synthetic pairs. It can detect that a resume was paraphrased from its own posting, and it cannot detect that synthetic resumes as a class are cleaner, more keyword-dense, or more uniformly structured than real ones. That needs real resumes, which is Tier 2 of docs/VALIDATION_ROADMAP.md.",
+  "n_pairs": 212,
+  "n_postings": 53,
+  "corpus_postings": 308,
+  "resamples": 3000,
+  "seed": 42,
+  "ngram_overlap": {
+    "2": {
+      "mean_own": 0.04064,
+      "mean_control": 0.04014,
+      "mean_excess": 0.00049,
+      "excess_ci95": [
+        -0.00398,
+        0.00506
+      ],
+      "positive_minus_negative_excess": 0.00374,
+      "by_match_type": {
+        "good": {
+          "own": 0.05091,
+          "control": 0.05102,
+          "excess": -0.0001
+        },
+        "hard_negative": {
+          "own": 0.02774,
+          "control": 0.03016,
+          "excess": -0.00242
+        },
+        "partial": {
+          "own": 0.04785,
+          "control": 0.04542,
+          "excess": 0.00243
+        },
+        "strong": {
+          "own": 0.0615,
+          "control": 0.05719,
+          "excess": 0.00431
+        },
+        "weak": {
+          "own": 0.02389,
+          "control": 0.02495,
+          "excess": -0.00105
+        }
+      }
+    },
+    "4": {
+      "mean_own": 0.00276,
+      "mean_control": 0.00199,
+      "mean_excess": 0.00077,
+      "excess_ci95": [
+        -0.00055,
+        0.00218
+      ],
+      "positive_minus_negative_excess": 0.00225,
+      "by_match_type": {
+        "good": {
+          "own": 0.00313,
+          "control": 0.00232,
+          "excess": 0.0008
+        },
+        "hard_negative": {
+          "own": 0.00175,
+          "control": 0.00134,
+          "excess": 0.00041
+        },
+        "partial": {
+          "own": 0.0004,
+          "control": 0.00207,
+          "excess": -0.00167
+        },
+        "strong": {
+          "own": 0.00576,
+          "control": 0.0029,
+          "excess": 0.00287
+        },
+        "weak": {
+          "own": 0.00172,
+          "control": 0.00151,
+          "excess": 0.00021
+        }
+      }
+    },
+    "6": {
+      "mean_own": 4e-05,
+      "mean_control": 0.0,
+      "mean_excess": 4e-05,
+      "excess_ci95": [
+        0.0,
+        0.00011
+      ],
+      "positive_minus_negative_excess": 0.0001,
+      "by_match_type": {
+        "good": {
+          "own": 0.0,
+          "control": 0.0,
+          "excess": 0.0
+        },
+        "hard_negative": {
+          "own": 0.0,
+          "control": 0.0,
+          "excess": 0.0
+        },
+        "partial": {
+          "own": 0.0,
+          "control": 0.0,
+          "excess": 0.0
+        },
+        "strong": {
+          "own": 0.00015,
+          "control": 0.0,
+          "excess": 0.00015
+        },
+        "weak": {
+          "own": 0.0,
+          "control": 0.0,
+          "excess": 0.0
+        }
+      }
+    },
+    "8": {
+      "mean_own": 0.0,
+      "mean_control": 0.0,
+      "mean_excess": 0.0,
+      "excess_ci95": [
+        0.0,
+        0.0
+      ],
+      "positive_minus_negative_excess": 0.0,
+      "by_match_type": {
+        "good": {
+          "own": 0.0,
+          "control": 0.0,
+          "excess": 0.0
+        },
+        "hard_negative": {
+          "own": 0.0,
+          "control": 0.0,
+          "excess": 0.0
+        },
+        "partial": {
+          "own": 0.0,
+          "control": 0.0,
+          "excess": 0.0
+        },
+        "strong": {
+          "own": 0.0,
+          "control": 0.0,
+          "excess": 0.0
+        },
+        "weak": {
+          "own": 0.0,
+          "control": 0.0,
+          "excess": 0.0
+        }
+      }
+    }
+  },
+  "posting_unique_term_leakage": {
+    "pairs_with_any_leak": 8,
+    "by_match_type": {
+      "good": {
+        "mean_unique_terms_leaked": 0.0,
+        "pairs_with_any_leak": 0,
+        "n": 27
+      },
+      "hard_negative": {
+        "mean_unique_terms_leaked": 0.0377,
+        "pairs_with_any_leak": 2,
+        "n": 53
+      },
+      "partial": {
+        "mean_unique_terms_leaked": 0.0769,
+        "pairs_with_any_leak": 2,
+        "n": 26
+      },
+      "strong": {
+        "mean_unique_terms_leaked": 0.0566,
+        "pairs_with_any_leak": 3,
+        "n": 53
+      },
+      "weak": {
+        "mean_unique_terms_leaked": 0.0189,
+        "pairs_with_any_leak": 1,
+        "n": 53
+      }
+    }
+  },
+  "signal_beyond_overlap": {
+    "partial_spearman_controlling_long_ngrams": 0.8164,
+    "partial_spearman_controlling_short_ngrams": 0.7845,
+    "spearman_uncontrolled": 0.8164,
+    "overlap_alone_vs_label": 0.3654
+  },
+  "artifact_detected": false,
+  "verdict": "No long-span copying detected: at n=6 the excess over a same-industry control has a 95% interval of [0.0, 0.00011], which includes zero. The resumes do not appear to be paraphrases of their postings."
+}

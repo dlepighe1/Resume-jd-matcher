@@ -1,11 +1,18 @@
 {
   "_what": "Which differences between scoring engines survive resampling.",
   "_method": "Paired cluster bootstrap. Postings are the resampling unit because the 106 pairs come from 50 postings and pairs sharing a posting are not independent. Both engines score the identical resample, so the difference is paired. The p-value is the two-sided achieved significance level of the bootstrap distribution of the difference.",
+  "_multiplicity": "Every comparison in this file belongs to one family reported together, so each carries a Holm-Bonferroni adjusted p-value beside its raw one. `significant_holm` requires both the adjusted p-value below 0.05 and a 95% interval excluding zero. The raw p-value is kept so the cost of the correction is visible rather than absorbed.",
+  "_equivalence": "`significant: false` means a difference was not detected, which is not the same claim as no difference. Each comparison therefore also carries a two-one-sided-tests result: equivalent when the 90% interval lies entirely inside the margin. The margin is this project's measured reproducibility spread, not a round number (see equivalence_margins). `min_detectable_effect_80pct_power` says what the comparison could have found, so an inconclusive verdict can be read as a limit on the design rather than a result.",
   "n_pairs": 106,
   "n_postings": 50,
   "resamples": 10000,
   "seed": 42,
   "production_engine": "finetuned_calibrated",
+  "equivalence_margins": {
+    "spearman": 0.0174,
+    "mae": 0.0084,
+    "_derivation": "|notebook 07 `combined` arm - notebook 05 published run| on the 3-seed aggregate, Platt. Both are the identical recipe, so this is the spread of re-running an unchanged design rather than a difference between designs."
+  },
   "comparisons": [
     {
       "metric": "spearman",
@@ -18,9 +25,24 @@
         0.1077,
         0.2919
       ],
+      "ci90": [
+        0.1204,
+        0.2751
+      ],
       "p_value": 0.0,
+      "bootstrap_se": 0.0468,
+      "min_detectable_effect_80pct_power": 0.131,
       "n_effective_resamples": 10000,
-      "significant": true
+      "significant": true,
+      "family": "primary",
+      "p_value_holm": 0.0,
+      "significant_holm": true,
+      "equivalence": {
+        "tested": true,
+        "margin": 0.0174,
+        "equivalent": false
+      },
+      "verdict": "different"
     },
     {
       "metric": "mae",
@@ -33,9 +55,24 @@
         -0.1066,
         -0.0673
       ],
+      "ci90": [
+        -0.1035,
+        -0.0702
+      ],
       "p_value": 0.0,
+      "bootstrap_se": 0.0101,
+      "min_detectable_effect_80pct_power": 0.0283,
       "n_effective_resamples": 10000,
-      "significant": true
+      "significant": true,
+      "family": "primary",
+      "p_value_holm": 0.0,
+      "significant_holm": true,
+      "equivalence": {
+        "tested": true,
+        "margin": 0.0084,
+        "equivalent": false
+      },
+      "verdict": "different"
     },
     {
       "metric": "spearman",
@@ -48,9 +85,24 @@
         0.0198,
         0.2116
       ],
+      "ci90": [
+        0.0326,
+        0.1915
+      ],
       "p_value": 0.012,
+      "bootstrap_se": 0.0486,
+      "min_detectable_effect_80pct_power": 0.1362,
       "n_effective_resamples": 10000,
-      "significant": true
+      "significant": true,
+      "family": "primary",
+      "p_value_holm": 0.012,
+      "significant_holm": true,
+      "equivalence": {
+        "tested": true,
+        "margin": 0.0174,
+        "equivalent": false
+      },
+      "verdict": "different"
     },
     {
       "metric": "mae",
@@ -63,9 +115,24 @@
         -0.1616,
         -0.0886
       ],
+      "ci90": [
+        -0.1552,
+        -0.0946
+      ],
       "p_value": 0.0,
+      "bootstrap_se": 0.0185,
+      "min_detectable_effect_80pct_power": 0.0518,
       "n_effective_resamples": 10000,
-      "significant": true
+      "significant": true,
+      "family": "primary",
+      "p_value_holm": 0.0,
+      "significant_holm": true,
+      "equivalence": {
+        "tested": true,
+        "margin": 0.0084,
+        "equivalent": false
+      },
+      "verdict": "different"
     },
     {
       "metric": "spearman",
@@ -78,9 +145,24 @@
         0.1237,
         0.404
       ],
+      "ci90": [
+        0.1418,
+        0.3756
+      ],
       "p_value": 0.0,
+      "bootstrap_se": 0.0715,
+      "min_detectable_effect_80pct_power": 0.2002,
       "n_effective_resamples": 10000,
-      "significant": true
+      "significant": true,
+      "family": "primary",
+      "p_value_holm": 0.0,
+      "significant_holm": true,
+      "equivalence": {
+        "tested": true,
+        "margin": 0.0174,
+        "equivalent": false
+      },
+      "verdict": "different"
     },
     {
       "metric": "spearman",
@@ -93,9 +175,24 @@
         0.1193,
         0.4211
       ],
+      "ci90": [
+        0.1374,
+        0.3907
+      ],
       "p_value": 0.0,
+      "bootstrap_se": 0.0768,
+      "min_detectable_effect_80pct_power": 0.2152,
       "n_effective_resamples": 10000,
-      "significant": true
+      "significant": true,
+      "family": "primary",
+      "p_value_holm": 0.0,
+      "significant_holm": true,
+      "equivalence": {
+        "tested": true,
+        "margin": 0.0174,
+        "equivalent": false
+      },
+      "verdict": "different"
     }
   ],
   "precision_at_1": {

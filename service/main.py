@@ -14,10 +14,12 @@ dishonest.
 Run locally:  uvicorn service.main:app --reload --port 8000   (from the repo root)
 """
 
+import hmac
 import logging
 import os
 import pickle
 import sys
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -26,7 +28,7 @@ from pathlib import Path
 # huggingface.co and every model download dies with CERTIFICATE_VERIFY_FAILED, which
 # then closes hf_hub's shared HTTP client, so even the cached fallback load fails with a
 # confusing "client has been closed". Verifying against the OS cert store fixes it.
-# No-op on Linux/containers, so it is safe to leave in for the HuggingFace Space too.
+# No-op on Linux/containers, so it is safe to leave in for the deployed image too.
 try:
     import truststore
 
@@ -34,7 +36,7 @@ try:
 except ImportError:
     pass
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
 from pydantic import BaseModel, Field
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -58,10 +60,31 @@ CALIBRATOR_PATHS = [
 MAX_WORDS = 350
 MIN_WORDS = 50
 
+# Matches the cap web/app/api/score/route.ts already applies. This service is reachable
+# without going through Next.js, so it does not get to inherit that check.
+#
+# The cap is not cosmetic. `score()` truncates to MAX_WORDS before encoding, but
+# `analyze_skill_gap` deliberately runs on the untruncated text, so its cost grows with the
+# input: a megabyte of pasted text becomes thousands of sentences to embed, on a CPU
+# container, inside one request. Rejecting it at the edge is cheaper than discovering it
+# under load.
+MAX_CHARS = 15_000
+
+# Per-client-address budget. A public demo endpoint that runs a 109M-parameter model per
+# call needs some ceiling, and this is the smallest one that does not need a datastore.
+RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "30"))
+RATE_LIMIT_WINDOW_SECONDS = float(os.getenv("RATE_LIMIT_WINDOW_SECONDS", "60"))
+
+# Shared with the web app (SCORING_SERVICE_SECRET there). Every request the web app makes
+# comes from Vercel's servers, so without this the limiter above would hold one budget
+# for every visitor combined. With it, the web app forwards the visitor's address in
+# X-Client-IP and the service trusts that header only when the secret matches.
+PROXY_SECRET = os.getenv("PROXY_SECRET", "")
+
 
 class ScoreRequest(BaseModel):
-    resume: str = Field(min_length=1)
-    jd: str = Field(min_length=1)
+    resume: str = Field(min_length=1, max_length=MAX_CHARS)
+    jd: str = Field(min_length=1, max_length=MAX_CHARS)
 
 
 class RequirementMatchOut(BaseModel):
@@ -160,7 +183,6 @@ def _load_calibrator():
     PlattCalibrator, so register it there or unpickling raises AttributeError.
     """
     import __main__
-
     from src.train import PlattCalibrator
 
     __main__.PlattCalibrator = PlattCalibrator
@@ -222,6 +244,78 @@ def get_scorer() -> Scorer:
 app = FastAPI(title="ResumeAI scoring service", lifespan=lifespan)
 
 
+class SlidingWindowLimiter:
+    """Fixed budget per client address over a sliding window, held in memory.
+
+    In-process on purpose. The alternative is a datastore, and a research demo that ships
+    one model on one container does not need shared state to answer "has this address
+    already had thirty scores this minute". The consequence is stated rather than
+    discovered: run more than one replica and each gets its own budget.
+
+    Timestamps older than the window are dropped on read, so an idle client costs nothing
+    and the structure cannot grow without bound while traffic is bounded.
+    """
+
+    def __init__(self, limit: int, window_seconds: float):
+        self.limit = limit
+        self.window = window_seconds
+        self._hits: dict[str, list[float]] = {}
+
+    def allow(self, client: str, now: float) -> bool:
+        recent = [t for t in self._hits.get(client, []) if now - t < self.window]
+        if len(recent) >= self.limit:
+            self._hits[client] = recent
+            return False
+        recent.append(now)
+        self._hits[client] = recent
+        return True
+
+    def retry_after(self, client: str, now: float) -> int:
+        recent = self._hits.get(client, [])
+        if not recent:
+            return 0
+        return max(1, int(self.window - (now - min(recent))) + 1)
+
+
+limiter = SlidingWindowLimiter(RATE_LIMIT_REQUESTS, RATE_LIMIT_WINDOW_SECONDS)
+
+
+def client_key(request: Request) -> str:
+    """Who a request is charged to.
+
+    The forwarded address is believed only alongside the shared secret. Anyone calling the
+    service directly could otherwise send a fresh X-Client-IP per request and never hit
+    the limit. Direct callers are keyed on the socket address, which behind the hosting
+    platform's proxy means they share one budget, and that is acceptable for callers who
+    skipped the web app.
+    """
+    forwarded = request.headers.get("x-client-ip", "").strip()
+    supplied = request.headers.get("x-proxy-secret", "")
+    if PROXY_SECRET and forwarded and hmac.compare_digest(supplied, PROXY_SECRET):
+        return forwarded
+    return request.client.host if request.client else "unknown"
+
+
+def enforce_rate_limit(request: Request) -> None:
+    """FastAPI dependency guarding the two endpoints that run a model.
+
+    /health is deliberately exempt: it is what a platform polls to decide whether the
+    container is alive, and rate-limiting a liveness probe is how a service gets restarted
+    for being busy.
+    """
+    if RATE_LIMIT_REQUESTS <= 0:  # explicit opt-out for local development
+        return
+    client = client_key(request)
+    now = time.monotonic()
+    if not limiter.allow(client, now):
+        raise HTTPException(
+            status_code=429,
+            detail=f"Rate limit is {RATE_LIMIT_REQUESTS} requests per "
+                   f"{int(RATE_LIMIT_WINDOW_SECONDS)}s.",
+            headers={"Retry-After": str(limiter.retry_after(client, now))},
+        )
+
+
 @app.get("/health", response_model=HealthResponse)
 def health(scorer: Scorer = Depends(get_scorer)) -> HealthResponse:
     return HealthResponse(
@@ -244,7 +338,8 @@ def _validate(request: ScoreRequest) -> None:
 
 
 @app.post("/score", response_model=ScoreResponse)
-def score(request: ScoreRequest, scorer: Scorer = Depends(get_scorer)) -> ScoreResponse:
+def score(request: ScoreRequest, scorer: Scorer = Depends(get_scorer),
+          _: None = Depends(enforce_rate_limit)) -> ScoreResponse:
     _validate(request)
     return scorer.score(request.resume, request.jd)
 
@@ -256,7 +351,8 @@ _base_model = None
 
 
 @app.post("/baseline", response_model=BaselineResponse)
-def baseline(request: ScoreRequest) -> BaselineResponse:
+def baseline(request: ScoreRequest,
+             _: None = Depends(enforce_rate_limit)) -> BaselineResponse:
     """Score the same pair with un-fine-tuned MPNet.
 
     This exists so the demo can show what fine-tuning bought on the visitor's own text

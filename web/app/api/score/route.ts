@@ -76,11 +76,15 @@ export async function POST(request: Request) {
   const serviceUp = env.scoringService.isConfigured;
   const claudeUp = includeClaude && hasAnthropicKey();
 
+  // Vercel overwrites x-forwarded-for with the real client address, so the first entry is
+  // the visitor rather than anything they chose to send.
+  const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || undefined;
+
   const attempted = { finetuned: serviceUp, baseline: serviceUp, claude: claudeUp };
 
   const [finetuned, baseline, claude] = await Promise.allSettled([
-    serviceUp ? analyzeWithFineTuned(jobDescription, resumeText) : skipped(),
-    serviceUp ? scoreWithBaseModel(jobDescription, resumeText) : skipped(),
+    serviceUp ? analyzeWithFineTuned(jobDescription, resumeText, clientIp) : skipped(),
+    serviceUp ? scoreWithBaseModel(jobDescription, resumeText, clientIp) : skipped(),
     claudeUp ? analyzeWithClaude(jobDescription, resumeText) : skipped(),
   ]);
 

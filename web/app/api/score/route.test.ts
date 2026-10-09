@@ -175,3 +175,25 @@ describe("POST /api/score", () => {
     expect(body.ats.matched).toEqual(expect.arrayContaining(["python", "sql"]));
   });
 });
+
+describe("visitor identity", () => {
+  it("passes the visitor's address from x-forwarded-for to both service calls", async () => {
+    vi.mocked(analyzeWithFineTuned).mockResolvedValue(analysis(82));
+    vi.mocked(scoreWithBaseModel).mockResolvedValue({
+      rawCosine: 0.6,
+      modelId: "base",
+      calibrated: false,
+    });
+
+    await POST(
+      new Request("http://localhost/api/score", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-forwarded-for": "9.9.9.9, 10.0.0.1" },
+        body: JSON.stringify(validBody),
+      }),
+    );
+
+    expect(analyzeWithFineTuned).toHaveBeenCalledWith(WORDS, WORDS, "9.9.9.9");
+    expect(scoreWithBaseModel).toHaveBeenCalledWith(WORDS, WORDS, "9.9.9.9");
+  });
+});

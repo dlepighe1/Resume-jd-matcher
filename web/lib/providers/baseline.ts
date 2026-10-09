@@ -1,5 +1,6 @@
 import { env } from "@/lib/env";
 import { AnalyzeError } from "@/lib/errors";
+import { serviceHeaders } from "@/lib/providers/service";
 
 /**
  * Un-fine-tuned `all-mpnet-base-v2` on the same pair, via the scoring service.
@@ -26,6 +27,7 @@ export interface BaselineScore {
 export async function scoreWithBaseModel(
   jobDescription: string,
   resumeText: string,
+  clientIp?: string,
 ): Promise<BaselineScore> {
   const baseUrl = env.scoringService.url.replace(/\/$/, "");
 
@@ -33,7 +35,7 @@ export async function scoreWithBaseModel(
   try {
     response = await fetch(`${baseUrl}/baseline`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: serviceHeaders(clientIp),
       body: JSON.stringify({ resume: resumeText, jd: jobDescription }),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });

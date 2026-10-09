@@ -8,7 +8,12 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.augment import augment_dataset, drop_sentences, keyword_noise, shuffle_sections
-from src.text_utils import extract_requirements, preprocess_resume, smart_truncate_jd, split_sentences
+from src.text_utils import (
+    extract_requirements,
+    preprocess_resume,
+    smart_truncate_jd,
+    split_sentences,
+)
 
 SAMPLE_JD = """
 Acme Corp is a fast-growing leader in cloud logistics. We were founded in 2010

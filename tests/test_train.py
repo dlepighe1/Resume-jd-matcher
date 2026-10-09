@@ -10,9 +10,9 @@ import pickle
 import numpy as np
 import pandas as pd
 import pytest
-
 from conftest import ScriptedEncoder
-from src.train import PlattCalibrator, encode_pairs, metrics
+
+from src.train import PlattCalibrator, encode_pairs, environment, metrics, posting_grouped_split
 
 
 def sigmoid(x):
@@ -104,3 +104,92 @@ class TestMetrics:
 
         assert result["mae"] == round(result["mae"], 4)
         assert result["spearman"] == round(result["spearman"], 4)
+
+
+class TestPostingGroupedSplit:
+    """The README calls a posting-disjoint calibration split the first change for any
+    re-run. These check the property that makes it worth having, not the sizes."""
+
+    @staticmethod
+    def _external(n_postings=20, per_posting=4):
+        types = ["strong", "good", "hard_negative", "weak"]
+        return pd.DataFrame([
+            {"jd": f"posting-{p}", "score": 0.1 * (c + 1), "match_type": types[c % 4],
+             "resume": f"resume {p}-{c}"}
+            for p in range(n_postings) for c in range(per_posting)
+        ])
+
+    def test_no_posting_appears_in_both_halves(self):
+        """The whole point. The published split left 47 of 50 final-test postings also
+        feeding the calibrator, so a calibrator saw candidates from the postings it was
+        later scoring."""
+        cal, test = posting_grouped_split(self._external(), seed=42)
+
+        assert not set(cal["jd"]) & set(test["jd"])
+
+    def test_every_pair_lands_somewhere(self):
+        external = self._external()
+        cal, test = posting_grouped_split(external, seed=42)
+
+        assert len(cal) + len(test) == len(external)
+        assert set(cal["resume"]) | set(test["resume"]) == set(external["resume"])
+
+    def test_the_halves_stay_close_in_size(self):
+        """Dealing each posting to whichever half is smaller keeps them balanced without
+        letting a posting straddle the boundary."""
+        cal, test = posting_grouped_split(self._external(), seed=42)
+
+        assert abs(len(cal) - len(test)) <= 4  # at most one posting's worth
+
+    def test_uneven_postings_do_not_unbalance_the_split(self):
+        """Real postings do not all carry four candidates."""
+        rows = []
+        for p in range(15):
+            for c in range(1 + p % 4):
+                rows.append({"jd": f"posting-{p}", "score": 0.5, "match_type": "weak",
+                             "resume": f"r{p}-{c}"})
+        external = pd.DataFrame(rows)
+
+        cal, test = posting_grouped_split(external, seed=1)
+
+        assert not set(cal["jd"]) & set(test["jd"])
+        assert abs(len(cal) - len(test)) <= 4
+
+    def test_the_split_is_deterministic_for_a_fixed_seed(self):
+        external = self._external()
+        first = posting_grouped_split(external, seed=7)
+        second = posting_grouped_split(external, seed=7)
+
+        assert list(first[0]["resume"]) == list(second[0]["resume"])
+
+    def test_a_different_seed_produces_a_different_split(self):
+        external = self._external()
+
+        a, _ = posting_grouped_split(external, seed=1)
+        b, _ = posting_grouped_split(external, seed=2)
+
+        assert set(a["jd"]) != set(b["jd"])
+
+
+class TestEnvironmentCapture:
+    """A run that does not record its stack cannot support the study's claim that the
+    run-to-run spread is AMP non-determinism rather than a dependency that moved."""
+
+    def test_records_the_interpreter_and_the_torch_build(self):
+        info = environment()
+
+        assert info["python"].count(".") == 2
+        assert info["torch"]
+        assert isinstance(info["cuda_available"], bool)
+
+    def test_records_the_libraries_that_move_the_numbers(self):
+        info = environment()
+
+        for package in ("sentence-transformers", "transformers", "scikit-learn", "numpy", "scipy"):
+            assert package in info
+
+    def test_a_missing_package_is_recorded_as_null_rather_than_crashing_the_run(self):
+        """Losing four GPU hours to a metrics-file KeyError would be an absurd way to fail."""
+        info = environment()
+
+        assert all(v is None or isinstance(v, str | bool) for v in info.values())

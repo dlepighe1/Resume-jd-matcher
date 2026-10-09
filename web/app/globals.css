@@ -11,11 +11,11 @@
  *
  * Values come from the validated reference palette. The three categorical slots
  * (blue / orange / aqua) were checked with the palette validator under --pairs all in
- * both modes — the gate that applies to scatter plots. Dark is a selected set of steps
+ * both modes, which is the gate that applies to scatter plots. Dark is a selected set of steps
  * for the dark surface, not an automatic inversion of the light values.
  *
  * Light-mode aqua sits below 3:1 against the light surface, so anything drawn in it
- * ships a visible direct label or the table view — never color alone.
+ * ships a visible direct label or the table view, never color alone.
  */
 :root {
   --surface-1: #fcfcfb;

@@ -1,5 +1,11 @@
 """Reproduce the ResumeAI production model end-to-end.
 
+By default this reproduces the recipe the published checkpoint was trained under. Two
+flags switch on changes the evidence in this repository already supports but that the
+shipped model predates, `--loss cosent` and `--calibration-split posting-grouped`. Both are
+opt-in: a reproduction script that quietly produced a different model from the published
+one would recreate the exact defect documented in the README.
+
 Pipeline (mirrors Notebooks/05_production_v2.ipynb):
   1. Load Data/resume_jd_training_800.csv + Data/external_test_200_pairs.csv
   2. Smart-truncate JDs, split external set 106 calibration / 106 final test
@@ -19,6 +25,7 @@ Usage:
 """
 
 import argparse
+import importlib.metadata
 import json
 import pickle
 import sys
@@ -40,6 +47,68 @@ from src.text_utils import smart_truncate_jd
 
 SEED = 42
 REPO_ROOT = Path(__file__).resolve().parent.parent
+
+
+def environment() -> dict:
+    """The software stack this run happened under, recorded beside its metrics.
+
+    The study's reproducibility finding is that three runs of one recipe span 0.0174
+    aggregate Spearman, attributed to AMP non-determinism. That attribution is only
+    checkable if each run says what it ran on. Two runs a year apart under different
+    PyTorch builds would otherwise be indistinguishable from two runs of the same one, and
+    the finding would quietly become an assumption.
+    """
+    import platform
+
+    info = {
+        "python": platform.python_version(),
+        "platform": platform.platform(),
+        "torch": torch.__version__,
+        "cuda_available": bool(torch.cuda.is_available()),
+        "cuda_device": torch.cuda.get_device_name(0) if torch.cuda.is_available() else None,
+    }
+    for package in ("sentence-transformers", "transformers", "scikit-learn", "numpy", "scipy"):
+        try:
+            info[package] = importlib.metadata.version(package)
+        except importlib.metadata.PackageNotFoundError:
+            info[package] = None
+    return info
+
+
+def posting_grouped_split(external: pd.DataFrame, seed: int):
+    """Split the external pairs so no posting contributes to both halves.
+
+    The published run split stratified by match type, which scattered each posting's four
+    candidates across both halves and left 47 of the 50 final-test postings also feeding
+    the calibrator. Ranking metrics cannot be affected, because calibration is monotone,
+    and the measured effect on MAE is 0.0006 under leave-one-posting-out refitting. It is
+    still the wrong design, and the README has called it the first change for any re-run
+    since before this function existed.
+
+    Postings are shuffled and dealt into the half that is currently smaller, which keeps
+    the two halves close in size without letting a posting straddle them. Match-type
+    stratification is given up in exchange: with 53 postings there is not enough room to
+    balance both, and posting disjointness is the property that was actually costing
+    something.
+    """
+    rng = np.random.default_rng(seed)
+    postings = external["jd"].unique()
+    rng.shuffle(postings)
+
+    left, right, left_n, right_n = [], [], 0, 0
+    for posting in postings:
+        size = int((external["jd"] == posting).sum())
+        if left_n <= right_n:
+            left.append(posting)
+            left_n += size
+        else:
+            right.append(posting)
+            right_n += size
+
+    calibration = external[external["jd"].isin(left)].copy()
+    test = external[external["jd"].isin(right)].copy()
+    assert not set(calibration["jd"]) & set(test["jd"]), "posting leaked across the split"
+    return calibration, test
 
 
 class PlattCalibrator:
@@ -71,7 +140,7 @@ class PlattCalibrator:
 def encode_pairs(model, eval_df):
     r_embs = model.encode(eval_df["resume"].tolist(), show_progress_bar=False, convert_to_numpy=True)
     j_embs = model.encode(eval_df["jd_clean"].tolist(), show_progress_bar=False, convert_to_numpy=True)
-    return [float(cosine_similarity([r], [j])[0][0]) for r, j in zip(r_embs, j_embs)]
+    return [float(cosine_similarity([r], [j])[0][0]) for r, j in zip(r_embs, j_embs, strict=False)]
 
 
 def metrics(true_scores, predictions):
@@ -89,6 +158,20 @@ def main():
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--push-to-hub", metavar="REPO_ID", help="e.g. dlepighe1/resume-jd-matcher-mpnet")
     parser.add_argument("--eval-only", action="store_true", help="skip training, evaluate model in --output-dir")
+    # The two changes the evidence in this repository already supports, off by default so
+    # that a bare `python src/train.py` still reproduces the recipe the published
+    # checkpoint was trained under. Turning either on produces a different model, and a
+    # reproduction script that silently produced a different model would be worse than one
+    # that is out of date.
+    parser.add_argument("--loss", choices=("combined", "cosent"), default="combined",
+                        help="combined reproduces the published model; cosent drops the "
+                             "CosineSimilarity term, which Notebooks/07 could not "
+                             "distinguish from it (see Results/loss_ablation_significance.json)")
+    parser.add_argument("--calibration-split", choices=("stratified", "posting-grouped"),
+                        default="stratified",
+                        help="stratified reproduces the published split; posting-grouped "
+                             "keeps every posting on one side, which the README calls the "
+                             "first change for any re-run")
     args = parser.parse_args()
 
     from sentence_transformers import InputExample, SentenceTransformer, losses
@@ -109,9 +192,12 @@ def main():
     for d in (df, ext_full):
         d["jd_clean"] = d["jd"].apply(lambda x: smart_truncate_jd(x, 350))
 
-    ext_cal, ext_test = train_test_split(
-        ext_full, test_size=0.5, random_state=SEED, stratify=ext_full["match_type"]
-    )
+    if args.calibration_split == "posting-grouped":
+        ext_cal, ext_test = posting_grouped_split(ext_full, SEED)
+    else:
+        ext_cal, ext_test = train_test_split(
+            ext_full, test_size=0.5, random_state=SEED, stratify=ext_full["match_type"]
+        )
     train_df, val_df = train_test_split(df, test_size=0.15, random_state=SEED, stratify=df["match_type"])
     train_df, val_df = train_df.copy(), val_df.copy()
 
@@ -131,24 +217,29 @@ def main():
             InputExample(texts=[r["resume"], r["jd"]], label=float(r["score"]))
             for _, r in aug_df.iterrows()
         ]
-        # Two objectives share the same data: CoSENT for ranking, Cosine for calibration
-        dl_cosent = DataLoader(examples, shuffle=True, batch_size=args.batch_size)
-        dl_cosine = DataLoader(examples, shuffle=True, batch_size=args.batch_size)
+        # Two dataloaders either way. fit() runs one backward pass per objective per step,
+        # so a one-objective arm would receive half the gradient updates and the comparison
+        # against the published model would confound the loss with the schedule. Notebooks/07
+        # matched them for the same reason.
+        dl_first = DataLoader(examples, shuffle=True, batch_size=args.batch_size)
+        dl_second = DataLoader(examples, shuffle=True, batch_size=args.batch_size)
         evaluator = EmbeddingSimilarityEvaluator(
             sentences1=val_df["resume"].tolist(),
             sentences2=val_df["jd_clean"].tolist(),
             scores=val_df["score"].astype(float).tolist(),
             name="val",
         )
+        second_loss = (losses.CoSENTLoss(model=model) if args.loss == "cosent"
+                       else losses.CosineSimilarityLoss(model=model))
         model.fit(
             train_objectives=[
-                (dl_cosent, losses.CoSENTLoss(model=model)),
-                (dl_cosine, losses.CosineSimilarityLoss(model=model)),
+                (dl_first, losses.CoSENTLoss(model=model)),
+                (dl_second, second_loss),
             ],
             evaluator=evaluator,
             epochs=args.epochs,
-            warmup_steps=int(len(dl_cosent) * 0.1),
-            evaluation_steps=len(dl_cosent),
+            warmup_steps=int(len(dl_first) * 0.1),
+            evaluation_steps=len(dl_first),
             output_path=str(model_dir),
             show_progress_bar=True,
             use_amp=(device == "cuda"),
@@ -207,6 +298,15 @@ def main():
         "external_calibration_pairs": len(ext_cal),
         "external_final_test_pairs": len(ext_test),
         "epochs": args.epochs,
+        "recipe": {
+            "loss": args.loss,
+            "calibration_split": args.calibration_split,
+            "batch_size": args.batch_size,
+            "seed": SEED,
+            "reproduces_published_checkpoint":
+                args.loss == "combined" and args.calibration_split == "stratified",
+        },
+        "environment": environment(),
         "results": results,
     }, indent=2), encoding="utf-8")
     print(f"\nCalibrators saved to {out}/ | Metrics: {metrics_path}")

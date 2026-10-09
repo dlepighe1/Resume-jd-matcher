@@ -6,9 +6,9 @@ logic rather than as a property of real MPNet vectors.
 """
 
 import pytest
+from conftest import ScriptedEncoder
 
 from app.explain import COVERED_THRESHOLD, PARTIAL_THRESHOLD, analyze_skill_gap, verdict_band
-from conftest import ScriptedEncoder
 from src.text_utils import extract_requirements, split_sentences
 
 JD = """Acme Corp builds cloud logistics software for global shippers.
@@ -23,12 +23,21 @@ RESUME = """Jane Smith is a data engineer with four years of professional experi
 She built ETL pipelines in Airflow processing two terabytes of data daily.
 """
 
-# Unit-ish 3-D vectors chosen so each requirement's best cosine lands in a known band.
+# Unit 3-D vectors placed so each requirement's best cosine lands in a known band.
 # The two resume sentences sit on the x and y axes; a requirement's z-component is
 # "content the resume doesn't have", which is what pushes it out of the covered band.
-COVERED_REQ = [0.95, 0.1, 0.29]   # best cosine ≈ 0.95 vs sentence 0
-PARTIAL_REQ = [0.42, 0.1, 0.90]   # best cosine ≈ 0.42 vs sentence 0
-MISSING_REQ = [0.10, 0.05, 0.99]  # best cosine ≈ 0.10 vs sentence 0
+#
+# Derived from the thresholds rather than typed as literals. These were typed once, and
+# when the thresholds moved from 0.50/0.35 to the measured 0.65/0.55 the partial vector
+# silently became a missing one, so the fixture tested a band it no longer produced.
+def _at_cosine(target: float) -> list[float]:
+    """Unit vector whose cosine against resume sentence 0 is exactly `target`."""
+    return [target, 0.0, float((1 - target**2) ** 0.5)]
+
+
+COVERED_REQ = _at_cosine((COVERED_THRESHOLD + 1.0) / 2)      # comfortably covered
+PARTIAL_REQ = _at_cosine((COVERED_THRESHOLD + PARTIAL_THRESHOLD) / 2)  # mid partial band
+MISSING_REQ = _at_cosine(PARTIAL_THRESHOLD / 2)              # comfortably missing
 
 
 @pytest.fixture
@@ -60,7 +69,7 @@ class TestAnalyzeSkillGap:
         matches, _ = analyze_skill_gap(model, RESUME, JD)
 
         assert matches[0].evidence == sents[0]
-        assert matches[0].similarity == pytest.approx(0.95, abs=0.01)
+        assert matches[0].similarity == pytest.approx(COVERED_REQ[0], abs=0.01)
 
     def test_missing_requirement_has_no_evidence(self, banded_model):
         model, _, _ = banded_model

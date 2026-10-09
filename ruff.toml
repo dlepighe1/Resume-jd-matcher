@@ -1,0 +1,37 @@
+# Lint configuration for the Python side.
+#
+# The web directory has run eslint since it existed; the Python that produces every number
+# in this repository had no linter at all, and CI ran neither. A study whose argument is
+# that its results are checked rather than asserted should not exempt its own code from
+# the same treatment.
+
+line-length = 100
+target-version = "py312"
+
+exclude = ["Notebooks", ".venv", "web"]
+
+[lint]
+select = [
+    "E",    # pycodestyle
+    "F",    # pyflakes: undefined names, unused imports, the errors that are always bugs
+    "I",    # import ordering, so diffs stay about the change
+    "B",    # bugbear: mutable defaults, loop-variable capture
+    "UP",   # pyupgrade
+    "C4",   # comprehension simplifications
+]
+ignore = [
+    "E501",  # line length is enforced by the formatter's judgement, not a hard stop, and
+             # several explanatory comments in this repository are worth more than a wrap
+]
+
+[lint.per-file-ignores]
+# Both need sys.path set up before importing from the repo root, so their imports cannot
+# all sit at the top of the file. Each one already carries an explicit noqa.
+"scripts/*.py" = ["E402"]
+# B008: `Depends(...)` in a parameter default is FastAPI's dependency-injection
+# idiom, not the mutable-default bug bugbear is looking for. Rewriting it would break
+# the framework.
+"service/*.py" = ["E402", "B008"]
+"src/*.py" = ["E402"]
+"app/*.py" = ["E402"]
+"tests/*.py" = ["E402"]

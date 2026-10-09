@@ -1,0 +1,33 @@
+cff-version: 1.2.0
+title: "ResumeAI: calibrated resume and job-description matching with external validation"
+message: >-
+  If you refer to this study, please cite it. Read docs/DATA_CARD.md before reusing the
+  data: the job descriptions are real and the match labels are synthetic, and every metric
+  measures fidelity to a labelling rubric rather than to recruiter judgement.
+type: software
+authors:
+  - family-names: Lepighe
+    given-names: David
+    orcid: ""
+repository-code: "https://github.com/dlepighe1/Resume-jd-matcher"
+url: "https://github.com/dlepighe1/Resume-jd-matcher"
+abstract: >-
+  A fine-tuned sentence-transformer that scores resume and job-description fit on a
+  calibrated 0 to 1 scale, evaluated only on job postings it never trained on. The study
+  reports a cross-encoder that scored 0.8917 Spearman on an internal test and -0.6122 on
+  unseen postings, four anti-overfitting fixes that all failed to close that gap, a
+  post-hoc calibration step that cuts absolute error by 29% without touching the ranking,
+  and a pre-registered loss ablation. Differences between engines are reported with a
+  paired cluster bootstrap over postings, Holm-corrected within families, and accompanied
+  by equivalence tests and minimum detectable effects so that null results can be
+  distinguished from underpowered ones.
+keywords:
+  - sentence-transformers
+  - information retrieval
+  - probability calibration
+  - external validation
+  - reproducibility
+  - resume screening
+license: MIT
+version: "1.1.0"
+date-released: "2026-08-05"

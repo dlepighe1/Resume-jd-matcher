@@ -1,4 +1,4 @@
-# Model weights (regenerate with src/train.py; ~420 MB) — but keep tiny calibrators
+# Model weights (regenerate with src/train.py; ~420 MB), but keep tiny calibrators
 models/*
 !models/*.pkl
 
@@ -28,7 +28,7 @@ out/
 next-env.d.ts
 *.tsbuildinfo
 
-# Secrets — .env.example is committed, real values never are
+# Secrets. .env.example is committed, real values never are
 .env
 .env*.local
 .claude/

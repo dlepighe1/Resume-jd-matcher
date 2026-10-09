@@ -24,7 +24,10 @@ import {
  */
 export function BenchmarkExplorer({ summary }: { summary: BenchmarkSummary }) {
   const [full, setFull] = useState<Benchmark | null>(null);
-  const [loadState, setLoadState] = useState<"idle" | "loading" | "error">("idle");
+  // "loading", not "idle": the effect below fetches unconditionally on mount, so idle was
+  // never a state this component was actually in. Setting it inside the effect instead
+  // costs a second render before the first paint and trips react-hooks/set-state-in-effect.
+  const [loadState, setLoadState] = useState<"idle" | "loading" | "error">("loading");
   const available = summary.engines.filter((e) => e.available);
   const [engineId, setEngineId] = useState(available[0]?.id ?? "");
   const [matchType, setMatchType] = useState<string>("all");
@@ -33,7 +36,6 @@ export function BenchmarkExplorer({ summary }: { summary: BenchmarkSummary }) {
 
   useEffect(() => {
     let cancelled = false;
-    setLoadState("loading");
     fetch("/benchmark.json")
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((data: Benchmark) => {

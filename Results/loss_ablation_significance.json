@@ -2,11 +2,18 @@
   "_what": "Does the combined loss beat its components, tested rather than asserted.",
   "_method": "Paired cluster bootstrap over postings, the same implementation used for the engine comparisons in significance.json. Every arm scored the identical 106 pairs, and gradient-step count was matched across arms by giving each arm two training objectives, so the only difference is which loss is applied.",
   "_preregistered_hypothesis": "H1: after Platt calibration, CoSENT alone is indistinguishable from the combined loss, because calibration already recovers the magnitude information the CosineSimilarity term supplies. Registered in Notebooks/07 before the runs.",
+  "_multiplicity": "Every comparison in this file belongs to one family reported together, so each carries a Holm-Bonferroni adjusted p-value beside its raw one. `significant_holm` requires both the adjusted p-value below 0.05 and a 95% interval excluding zero. The raw p-value is kept so the cost of the correction is visible rather than absorbed.",
+  "_equivalence": "`significant: false` means a difference was not detected, which is not the same claim as no difference. Each comparison therefore also carries a two-one-sided-tests result: equivalent when the 90% interval lies entirely inside the margin. The margin is this project's measured reproducibility spread, not a round number (see equivalence_margins). `min_detectable_effect_80pct_power` says what the comparison could have found, so an inconclusive verdict can be read as a limit on the design rather than a result.",
   "reference_arm": "combined_platt",
   "n_pairs": 106,
   "n_postings": 50,
   "resamples": 10000,
   "seed": 42,
+  "equivalence_margins": {
+    "spearman": 0.0174,
+    "mae": 0.0084,
+    "_derivation": "|notebook 07 `combined` arm - notebook 05 published run| on the 3-seed aggregate, Platt. Both are the identical recipe, so this is the spread of re-running an unchanged design rather than a difference between designs."
+  },
   "comparisons": [
     {
       "metric": "spearman",
@@ -19,9 +26,25 @@
         -0.0404,
         0.0043
       ],
+      "ci90": [
+        -0.0366,
+        0.0007
+      ],
       "p_value": 0.1158,
+      "bootstrap_se": 0.0114,
+      "min_detectable_effect_80pct_power": 0.0319,
       "n_effective_resamples": 10000,
-      "significant": false
+      "significant": false,
+      "family": "secondary",
+      "p_value_holm": 0.2316,
+      "significant_holm": false,
+      "equivalence": {
+        "tested": true,
+        "margin": 0.0174,
+        "equivalent": false
+      },
+      "verdict": "inconclusive",
+      "postings_to_resolve_at_margin": 169
     },
     {
       "metric": "spearman",
@@ -34,9 +57,23 @@
         0.0,
         0.0
       ],
+      "ci90": [
+        0.0,
+        0.0
+      ],
       "p_value": 1.0,
+      "bootstrap_se": 0.0,
+      "min_detectable_effect_80pct_power": 0.0,
       "n_effective_resamples": 10000,
-      "significant": false
+      "significant": false,
+      "family": "redundant",
+      "p_value_holm": null,
+      "significant_holm": false,
+      "equivalence": {
+        "tested": false,
+        "reason": "algebraically redundant"
+      },
+      "verdict": "redundant with the calibrated comparison of the same arm"
     },
     {
       "metric": "spearman",
@@ -49,9 +86,25 @@
         -0.048,
         -0.0044
       ],
+      "ci90": [
+        -0.044,
+        -0.0077
+      ],
       "p_value": 0.021,
+      "bootstrap_se": 0.0111,
+      "min_detectable_effect_80pct_power": 0.0312,
       "n_effective_resamples": 10000,
-      "significant": true
+      "significant": true,
+      "family": "secondary",
+      "p_value_holm": 0.0792,
+      "significant_holm": false,
+      "equivalence": {
+        "tested": true,
+        "margin": 0.0174,
+        "equivalent": false
+      },
+      "verdict": "inconclusive",
+      "postings_to_resolve_at_margin": 161
     },
     {
       "metric": "spearman",
@@ -64,9 +117,25 @@
         -0.0271,
         0.037
       ],
+      "ci90": [
+        -0.0223,
+        0.0304
+      ],
       "p_value": 0.8922,
+      "bootstrap_se": 0.0161,
+      "min_detectable_effect_80pct_power": 0.0452,
       "n_effective_resamples": 10000,
-      "significant": false
+      "significant": false,
+      "family": "primary",
+      "p_value_holm": 0.8922,
+      "significant_holm": false,
+      "equivalence": {
+        "tested": true,
+        "margin": 0.0174,
+        "equivalent": false
+      },
+      "verdict": "inconclusive",
+      "postings_to_resolve_at_margin": 338
     },
     {
       "metric": "mae",
@@ -79,9 +148,25 @@
         -0.0047,
         0.0164
       ],
+      "ci90": [
+        -0.0029,
+        0.0148
+      ],
       "p_value": 0.2702,
+      "bootstrap_se": 0.0054,
+      "min_detectable_effect_80pct_power": 0.0152,
       "n_effective_resamples": 10000,
-      "significant": false
+      "significant": false,
+      "family": "primary",
+      "p_value_holm": 0.5404,
+      "significant_holm": false,
+      "equivalence": {
+        "tested": true,
+        "margin": 0.0084,
+        "equivalent": false
+      },
+      "verdict": "inconclusive",
+      "postings_to_resolve_at_margin": 164
     },
     {
       "metric": "spearman",
@@ -94,9 +179,23 @@
         -0.0264,
         0.0373
       ],
+      "ci90": [
+        -0.0217,
+        0.0308
+      ],
       "p_value": 0.8728,
+      "bootstrap_se": 0.0161,
+      "min_detectable_effect_80pct_power": 0.0452,
       "n_effective_resamples": 10000,
-      "significant": false
+      "significant": false,
+      "family": "redundant",
+      "p_value_holm": null,
+      "significant_holm": false,
+      "equivalence": {
+        "tested": false,
+        "reason": "algebraically redundant"
+      },
+      "verdict": "redundant with the calibrated comparison of the same arm"
     },
     {
       "metric": "spearman",
@@ -109,9 +208,25 @@
         -0.0126,
         0.0619
       ],
+      "ci90": [
+        -0.0065,
+        0.0551
+      ],
       "p_value": 0.1956,
+      "bootstrap_se": 0.0189,
+      "min_detectable_effect_80pct_power": 0.0531,
       "n_effective_resamples": 10000,
-      "significant": false
+      "significant": false,
+      "family": "secondary",
+      "p_value_holm": 0.2316,
+      "significant_holm": false,
+      "equivalence": {
+        "tested": true,
+        "margin": 0.0174,
+        "equivalent": false
+      },
+      "verdict": "inconclusive",
+      "postings_to_resolve_at_margin": 466
     },
     {
       "metric": "spearman",
@@ -124,9 +239,25 @@
         0.0079,
         0.0878
       ],
+      "ci90": [
+        0.0149,
+        0.0813
+      ],
       "p_value": 0.0198,
+      "bootstrap_se": 0.0203,
+      "min_detectable_effect_80pct_power": 0.0569,
       "n_effective_resamples": 10000,
-      "significant": true
+      "significant": true,
+      "family": "secondary",
+      "p_value_holm": 0.0792,
+      "significant_holm": false,
+      "equivalence": {
+        "tested": true,
+        "margin": 0.0174,
+        "equivalent": false
+      },
+      "verdict": "inconclusive",
+      "postings_to_resolve_at_margin": 535
     },
     {
       "metric": "mae",
@@ -139,9 +270,24 @@
         -0.0278,
         -0.0043
       ],
+      "ci90": [
+        -0.0258,
+        -0.0061
+      ],
       "p_value": 0.0066,
+      "bootstrap_se": 0.006,
+      "min_detectable_effect_80pct_power": 0.0168,
       "n_effective_resamples": 10000,
-      "significant": true
+      "significant": true,
+      "family": "secondary",
+      "p_value_holm": 0.033,
+      "significant_holm": true,
+      "equivalence": {
+        "tested": true,
+        "margin": 0.0084,
+        "equivalent": false
+      },
+      "verdict": "different"
     },
     {
       "metric": "spearman",
@@ -154,10 +300,24 @@
         0.0093,
         0.0886
       ],
+      "ci90": [
+        0.0151,
+        0.0807
+      ],
       "p_value": 0.0136,
+      "bootstrap_se": 0.0199,
+      "min_detectable_effect_80pct_power": 0.0558,
       "n_effective_resamples": 10000,
-      "significant": true
+      "significant": true,
+      "family": "redundant",
+      "p_value_holm": null,
+      "significant_holm": false,
+      "equivalence": {
+        "tested": false,
+        "reason": "algebraically redundant"
+      },
+      "verdict": "redundant with the calibrated comparison of the same arm"
     }
   ],
-  "h1_verdict": "H1 SUPPORTED: CoSENT alone is indistinguishable from the combined loss after calibration, so the CosineSimilarity term can be dropped."
+  "h1_verdict": "H1 SUPPORTED WEAKLY: CoSENT alone is not separable from the combined loss, but equivalence is not established on mae, spearman, so this is a failure to detect a difference rather than a demonstrated tie."
 }

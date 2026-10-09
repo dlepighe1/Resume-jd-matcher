@@ -231,9 +231,9 @@ def test_summary_ablation_significance_matches_the_artifact(summary, ablation_si
 
 
 def test_combined_loss_is_still_recorded_as_redundant(summary, ablation_significance):
-    """The README says half the loss function can come out. That rests on CoSENT alone being
-    indistinguishable from the combined objective on both metrics. If a re-run separates
-    them, this fails and the claim has to be rewritten rather than silently inherited."""
+    """The README says the CosineSimilarity term can come out. That rests on CoSENT alone
+    being indistinguishable from the combined objective on both metrics. If a re-run
+    separates them, this fails and the claim has to be rewritten rather than inherited."""
     by_pair = {(c["b"], c["metric"]): c for c in ablation_significance["comparisons"]}
     for metric in ("spearman", "mae"):
         comparison = by_pair[("cosent_platt", metric)]
@@ -245,6 +245,76 @@ def test_combined_loss_is_still_recorded_as_redundant(summary, ablation_signific
     assert "H1 SUPPORTED" in ablation_significance["h1_verdict"]
     assert summary["notebook_07_loss_ablation"]["h1_verdict"] == \
         ablation_significance["h1_verdict"]
+
+
+# ── Multiplicity and equivalence ──────────────────────────────────────────────
+# The corrections exist to stop the study over-claiming. These stop the corrections
+# themselves from quietly reverting to the uncorrected numbers they replaced.
+
+def test_every_headline_engine_claim_survives_the_multiplicity_correction(significance):
+    """The six engine comparisons are the study's answers to its own research questions. If
+    a re-run leaves one of them clearing 0.05 raw but not adjusted, the README's summary
+    table is overstating a result and has to say so."""
+    for c in significance["comparisons"]:
+        assert c["family"] == "primary", f"{c['b']}/{c['metric']} left the primary family"
+        assert c["significant_holm"], (
+            f"production vs {c['b']} on {c['metric']} no longer survives Holm correction "
+            f"(raw p={c['p_value']}, adjusted p={c['p_value_holm']}); the README claims it does"
+        )
+
+
+def test_the_claude_comparison_reports_its_adjusted_p_value(summary, significance):
+    """The narrowest of the headline claims and the one a reader will check hardest."""
+    claim = summary["significance"]["production_vs_claude_opus_4_5"]
+    computed = next(c for c in significance["comparisons"]
+                    if c["b"] == "claude" and c["metric"] == "spearman")
+    assert claim["p_holm"] == pytest.approx(computed["p_value_holm"], abs=1e-4)
+    assert claim["significant_holm"] is computed["significant_holm"] is True
+
+
+def test_the_seed_ensemble_is_not_recorded_as_an_established_win(ablation_significance):
+    """This one was reported as significant at p=0.021 before the ablation family was
+    corrected, and the README recommended it on that basis. It is exploratory and it does
+    not survive Holm. If a re-run changes that, the recommendation can be upgraded, but it
+    must not be upgraded silently."""
+    ensemble = next(c for c in ablation_significance["comparisons"]
+                    if c["b"] == "cosent_ensemble_raw" and c["metric"] == "spearman")
+    assert ensemble["family"] == "secondary"
+    assert not ensemble["significant_holm"], (
+        "the 3-seed ensemble now survives correction; the README's 'evidenced rather than "
+        "adopted' framing understates it and should be rewritten"
+    )
+
+
+def test_the_equivalence_margin_is_derived_from_the_two_artifacts(
+        ablation_significance, ablation, production):
+    """The margin decides every equivalence verdict in the study, so it cannot be a number
+    somebody typed. It is the gap between two runs of the identical recipe, and this
+    recomputes it from both artifacts rather than trusting the copy in the results file."""
+    margins = ablation_significance["equivalence_margins"]
+    nb05 = production["aggregate"]["platt"]
+    nb07 = ablation["aggregate"]["combined"]["platt"]
+
+    assert margins["spearman"] == pytest.approx(
+        abs(nb07["spearman_mean"] - nb05["spearman_mean"]), abs=1e-4)
+    assert margins["mae"] == pytest.approx(
+        abs(nb07["mae_mean"] - nb05["mae_mean"]), abs=1e-4)
+    assert margins["spearman"] > 0, "a zero margin would call every null result equivalent"
+
+
+def test_the_primary_hypothesis_reports_what_would_settle_it(ablation_significance):
+    """An inconclusive primary result is only publishable if it says what it would take to
+    resolve. Both metrics must carry a sample size, and both must exceed the 50 postings the
+    study actually has, or the 'inconclusive' verdict is inconsistent with its own arithmetic."""
+    primary = [c for c in ablation_significance["comparisons"] if c["family"] == "primary"]
+    assert {c["metric"] for c in primary} == {"spearman", "mae"}
+    for c in primary:
+        if c["verdict"] != "inconclusive":
+            continue
+        needed = c.get("postings_to_resolve_at_margin")
+        assert needed and needed > ablation_significance["n_postings"], (
+            f"{c['b']}/{c['metric']} is inconclusive but claims the current sample suffices"
+        )
 
 
 def test_summary_records_the_run_to_run_gap_against_both_artifacts(summary, ablation,
@@ -300,11 +370,179 @@ def test_portfolio_card_has_no_superseded_headline_metrics(card):
         )
 
 
+def test_documentation_links_point_at_files_that_exist():
+    """The README, the spec and the card cross-reference each other and the artifacts. Those
+    links are the only navigation this repository has, and a dead one is invisible until a
+    reader hits it. `05_production_v2_fig1.png` was renamed once and the card kept pointing at
+    the old name, which is the same failure in the gallery."""
+    docs = [REPO_ROOT / "README.md", REPO_ROOT / "docs" / "RESEARCH_SPEC.md",
+            REPO_ROOT / "docs" / "DATA_CARD.md", REPO_ROOT / "docs" / "VALIDATION_ROADMAP.md"]
+
+    # Backticked paths are checked too, not only markdown links. RESEARCH_SPEC.md and
+    # DATA_CARD.md cite every artifact that way and contain no markdown links at all, so a
+    # link-only check would pass over both files without reading a single reference.
+    #
+    # A directory component is required. Bare filenames like `train.py` are prose shorthand
+    # rather than references, and resolving them would mean guessing which directory the
+    # sentence meant.
+    path_like = re.compile(r"`([\w.-]+/[\w./-]+\.(?:md|json|jsonl|py|csv|ipynb|cff|toml|ts|tsx|yml))`")
+
+    # Cited on purpose, absent on purpose. Both are correct references and neither can be
+    # resolved inside this repository.
+    unresolvable = {
+        "Results/training_metrics.json",  # written by a training run, not committed
+        "docs/SPEC.md",                   # lives in the Job-hunterAI repository
+    }
+
+    broken = []
+    for doc in docs:
+        if not doc.exists():
+            broken.append(f"{doc.name} is referenced by this test but does not exist")
+            continue
+        text = doc.read_text(encoding="utf-8")
+
+        for target in re.findall(r"\]\((?!https?://|#)([^)#]+)", text):
+            if not (doc.parent / target).resolve().exists():
+                broken.append(f"{doc.name} links to missing {target}")
+
+        for target in path_like.findall(text):
+            if "*" in target or target in unresolvable:
+                continue
+            if not (REPO_ROOT / target).exists():
+                broken.append(f"{doc.name} cites missing `{target}`")
+
+    assert not broken, "\n".join(broken)
+
+
+def test_the_validation_roadmap_is_reachable_from_the_published_surfaces():
+    """The roadmap is what turns "the labels are synthetic" from a disclaimer into a plan. It
+    is only worth writing if a reader can find it, so every surface that states the limitation
+    has to point at it."""
+    for path in (REPO_ROOT / "README.md", REPO_ROOT / "docs" / "RESEARCH_SPEC.md",
+                 PORTFOLIO_CARD):
+        if not path.exists():
+            continue
+        assert "VALIDATION_ROADMAP.md" in path.read_text(encoding="utf-8"), (
+            f"{path.name} does not reference the validation roadmap"
+        )
+
+
+def test_portfolio_card_frontmatter_is_valid_yaml(card):
+    """The card's frontmatter drives a public site. Everything else about it is guarded by
+    content tests that read it as text, which would happily pass on a file the site cannot
+    parse. An unquoted colon inside one of the long prose fields is all it takes."""
+    yaml = pytest.importorskip("yaml", reason="pyyaml is not installed")
+
+    frontmatter = re.match(r"^---\n(.*?)\n---\n", card, re.S)
+    assert frontmatter, "card no longer opens with a YAML frontmatter block"
+
+    parsed = yaml.safe_load(frontmatter.group(1))
+    for field in ("title", "slug", "outcome", "nextSteps", "keyInsights", "githubUrl"):
+        assert field in parsed, f"card frontmatter lost the {field} field"
+    assert isinstance(parsed["nextSteps"], list) and parsed["nextSteps"]
+    assert isinstance(parsed["keyInsights"], list) and parsed["keyInsights"]
+
+
 def test_portfolio_card_only_references_figures_that_exist(card):
     """`05_production_v2_fig1.png` was renamed to `..._LEGACY.png` and the card kept
-    pointing at the old name, so the gallery would have rendered broken images."""
-    referenced = set(re.findall(r"^\s*(?:-|trainingCurve:)\s*([\w.\-]+\.png)\s*(?:#.*)?$",
-                                card, re.MULTILINE))
+    pointing at the old name, so the gallery would have rendered broken images.
+
+    Every image the card names is matched, whichever field carries it: the `image:` rows
+    inside `resultImages`, the hero `image:`, and any bare list entry. The card's figures
+    live in two directories, because the ones this repository generates for the study are in
+    Results/ while the ones written for the portfolio are in docs/images/, so a name is
+    accepted if either holds it."""
+    directories = (RESULTS, REPO_ROOT / "docs" / "images")
+
+    referenced = set(re.findall(
+        r"^\s*(?:-\s*|(?:image|trainingCurve|confusionMatrix):\s*)([\w.\-]+\.(?:png|jpg|jpeg))"
+        r"\s*(?:#.*)?$",
+        card, re.MULTILINE))
     assert referenced, "no figures referenced; the regex or the card format changed"
-    for name in sorted(referenced):
-        assert (RESULTS / name).exists(), f"portfolio card references missing figure {name}"
+
+    missing = [name for name in sorted(referenced)
+               if not any((directory / name).exists() for directory in directories)]
+    assert not missing, (
+        "portfolio card references figures that exist in neither "
+        f"{RESULTS.name}/ nor docs/images/: {', '.join(missing)}"
+    )
+
+
+def _card_frontmatter(card: str) -> dict:
+    yaml = pytest.importorskip("yaml", reason="pyyaml is not installed")
+    frontmatter = re.match(r"^---\n(.*?)\n---\n", card, re.S)
+    assert frontmatter, "card no longer opens with a YAML frontmatter block"
+    return yaml.safe_load(frontmatter.group(1))
+
+
+def test_portfolio_card_matches_the_studio_schema(card):
+    """The card is pasted into a Sanity Studio, and the Studio silently ignores a field it
+    does not define or a value of the wrong shape. Three mismatches shipped that way: the
+    insights were plain strings where the schema wants {title, description} objects, the
+    figures sat in `confusionMatrix` and `trainingCurve`, which the frontend reads but the
+    schema never defined, and the required `sortOrder` was absent entirely. None of it would
+    have raised anything; the page would just have rendered short."""
+    parsed = _card_frontmatter(card)
+
+    # The six fields the schema marks required.
+    for field in ("title", "slug", "description", "category", "projectType", "sortOrder"):
+        assert field in parsed, f"card is missing the required field {field}"
+    assert parsed["projectType"] == "ai_ml_case_study"
+    assert parsed["category"] in {"Software", "Data Science", "UI/UX Design", "AI Innovations"}
+    assert isinstance(parsed["sortOrder"], int) and parsed["sortOrder"] >= 1
+
+    # Fields the schema does not define. Filling them renders nothing at all.
+    for absent in ("confusionMatrix", "trainingCurve"):
+        assert absent not in parsed, (
+            f"{absent} is read by the frontend but absent from schemaTypes/projectType.ts, "
+            f"so it cannot be filled from the Studio. Put the image in resultImages instead"
+        )
+
+    # A metric renders as a count-up tile when it carries `value` and as a Highlights card
+    # when it carries `textValue`. Setting both is ambiguous and setting neither renders a
+    # bare label.
+    for group in ("resultsMetrics", "impact", "result", "highlightMetrics"):
+        for metric in parsed.get(group, []):
+            assert "label" in metric, f"{group} entry without a label"
+            assert ("value" in metric) != ("textValue" in metric), (
+                f"{group} entry {metric['label']!r} must set exactly one of value, textValue"
+            )
+            if "value" in metric:
+                assert isinstance(metric["value"], int | float)
+
+    for group in ("keyInsights", "keyInsightsShared"):
+        for insight in parsed.get(group, []):
+            assert set(insight) == {"title", "description"}, (
+                f"{group} entries are {{title, description}} objects in the schema, not strings"
+            )
+
+    # The two insight lists are the same section rendered by different layouts, so they are
+    # kept identical on purpose. Letting them drift means the page says one thing on one
+    # layout and something else on another, with nothing to catch it.
+    if parsed.get("keyInsightsShared"):
+        assert parsed["keyInsightsShared"] == parsed["keyInsights"], (
+            "keyInsightsShared and keyInsights have drifted apart. Mirror them, or clear one"
+        )
+
+    for figure in parsed.get("resultImages", []):
+        assert set(figure) == {"title", "image", "caption"}, (
+            "resultImages entries are {title, image, caption} objects"
+        )
+
+    for challenge in parsed.get("challengesSolutions", []):
+        assert set(challenge) == {"challenge", "solution"}
+
+
+def test_portfolio_figures_are_generated(card):
+    """`scripts/make_portfolio_figures.py` renders the card's figures from committed
+    artifacts. The card names them, so a figure that was never generated is a broken image
+    on a public page rather than a missing file anyone would notice locally."""
+    images = REPO_ROOT / "docs" / "images"
+    for name in ("portfolio-cover.jpg", "fig-engine-ladder.png",
+                 "fig-behavioral-tests.png", "fig-calibration.png"):
+        assert (images / name).exists(), (
+            f"docs/images/{name} is missing. Run python scripts/make_portfolio_figures.py"
+        )
+
+    parsed = _card_frontmatter(card)
+    assert parsed.get("image"), "the card has no hero image, which is also the /projects card"

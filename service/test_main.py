@@ -5,6 +5,7 @@ no test here downloads MPNet, touches the HuggingFace Hub, or loads 420 MB of we
 That is the whole reason get_scorer() is a FastAPI dependency rather than a global read.
 """
 
+import re
 import sys
 from pathlib import Path
 
@@ -15,6 +16,8 @@ from fastapi.testclient import TestClient
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
+from app.explain import COVERED_THRESHOLD, PARTIAL_THRESHOLD  # noqa: E402
+from service import main  # noqa: E402
 from service.main import Scorer, app, get_scorer  # noqa: E402
 from src.text_utils import extract_requirements, split_sentences  # noqa: E402
 from src.train import PlattCalibrator  # noqa: E402
@@ -34,12 +37,19 @@ She built ETL pipelines in Airflow processing two terabytes of data daily at Bet
 Her core stack is Python, SQL, dbt, and Docker, plus AWS services in production daily.
 """
 
-# Hand-chosen 3-D vectors: the two resume sentences sit on the x and y axes, and each
-# requirement's z-component is "content the resume doesn't have", which is what pushes
-# it out of the covered band. Same trick as tests/test_explain.py.
-COVERED = [0.95, 0.1, 0.29]  # best cosine ~0.95
-PARTIAL = [0.42, 0.1, 0.90]  # best cosine ~0.42
-MISSING = [0.10, 0.05, 0.99]  # best cosine ~0.10
+# 3-D vectors: the two resume sentences sit on the x and y axes, and each requirement's
+# z-component is "content the resume doesn't have", which is what pushes it out of the
+# covered band. Same trick as tests/test_explain.py, and derived from the thresholds for
+# the same reason: typed literals quietly stopped matching their bands when the thresholds
+# moved to the values scripts/eval_explanations.py measured.
+def _at_cosine(target: float) -> list[float]:
+    """Unit vector whose cosine against resume sentence 0 is exactly `target`."""
+    return [target, 0.0, float((1 - target**2) ** 0.5)]
+
+
+COVERED = _at_cosine((COVERED_THRESHOLD + 1.0) / 2)
+PARTIAL = _at_cosine((COVERED_THRESHOLD + PARTIAL_THRESHOLD) / 2)
+MISSING = _at_cosine(PARTIAL_THRESHOLD / 2)
 
 
 class ScriptedEncoder:
@@ -246,3 +256,165 @@ class TestHealth:
 
         assert body["fine_tuned"] is False
         assert body["calibrator"] is None
+
+
+class TestInputLimits:
+    """The service is reachable without going through Next.js, so it cannot inherit the
+    15,000-character cap the web route applies."""
+
+    def test_rejects_a_resume_past_the_character_cap(self, client):
+        oversized = "word " * 20_000
+        response = client().post("/score", json={"resume": oversized, "jd": JD})
+
+        assert response.status_code == 422
+
+    def test_rejects_a_job_description_past_the_character_cap(self, client):
+        oversized = "word " * 20_000
+        response = client().post("/score", json={"resume": RESUME, "jd": oversized})
+
+        assert response.status_code == 422
+
+    def test_the_cap_matches_the_one_the_web_route_enforces(self):
+        """If these drift apart, one layer silently accepts what the other rejects and the
+        demo fails in a way that reads like a model problem."""
+        route = (Path(__file__).resolve().parents[1] / "web" / "app" / "api" / "score"
+                 / "route.ts")
+        if not route.exists():
+            pytest.skip("web/ is not present")
+
+        declared = re.search(r"const MAX_CHARS = ([\d_]+);", route.read_text(encoding="utf-8"))
+        assert declared, "web route no longer declares MAX_CHARS; the check cannot run"
+        assert int(declared.group(1).replace("_", "")) == main.MAX_CHARS, (
+            "service and web disagree about the maximum input size"
+        )
+
+    def test_the_baseline_endpoint_is_capped_too(self, client):
+        """It runs a second 420 MB model on the same untruncated text."""
+        oversized = "word " * 20_000
+        response = client().post("/baseline", json={"resume": oversized, "jd": JD})
+
+        assert response.status_code == 422
+
+
+class TestRateLimit:
+    def test_allows_traffic_inside_the_budget(self):
+        limiter = main.SlidingWindowLimiter(limit=3, window_seconds=60)
+
+        assert [limiter.allow("1.2.3.4", now=0.0) for _ in range(3)] == [True] * 3
+
+    def test_refuses_the_request_past_the_budget(self):
+        limiter = main.SlidingWindowLimiter(limit=2, window_seconds=60)
+        for _ in range(2):
+            limiter.allow("1.2.3.4", now=0.0)
+
+        assert limiter.allow("1.2.3.4", now=0.0) is False
+
+    def test_the_window_slides_rather_than_resetting_on_a_boundary(self):
+        """A fixed window lets a client spend its whole budget twice across the boundary.
+        Old timestamps expiring individually is what prevents that."""
+        limiter = main.SlidingWindowLimiter(limit=2, window_seconds=60)
+        limiter.allow("1.2.3.4", now=0.0)
+        limiter.allow("1.2.3.4", now=30.0)
+
+        assert limiter.allow("1.2.3.4", now=59.0) is False
+        assert limiter.allow("1.2.3.4", now=61.0) is True   # the 0.0 hit has aged out
+        assert limiter.allow("1.2.3.4", now=61.0) is False  # the 30.0 hit has not
+
+    def test_budgets_are_per_client_address(self):
+        limiter = main.SlidingWindowLimiter(limit=1, window_seconds=60)
+        limiter.allow("1.2.3.4", now=0.0)
+
+        assert limiter.allow("5.6.7.8", now=0.0) is True
+
+    def test_retry_after_is_never_zero_while_a_client_is_blocked(self):
+        """A Retry-After of 0 invites an immediate retry, which is the opposite of what a
+        limiter is for."""
+        limiter = main.SlidingWindowLimiter(limit=1, window_seconds=60)
+        limiter.allow("1.2.3.4", now=10.0)
+
+        assert limiter.retry_after("1.2.3.4", now=69.0) >= 1
+
+    def test_an_unseen_client_is_told_to_retry_immediately(self):
+        limiter = main.SlidingWindowLimiter(limit=1, window_seconds=60)
+
+        assert limiter.retry_after("never-seen", now=0.0) == 0
+
+    def test_the_endpoint_returns_429_with_a_retry_after_header(self, client, monkeypatch):
+        monkeypatch.setattr(main, "RATE_LIMIT_REQUESTS", 2)
+        monkeypatch.setattr(main, "limiter", main.SlidingWindowLimiter(2, 60))
+        c = client()
+
+        first = [c.post("/score", json={"resume": RESUME, "jd": JD}) for _ in range(2)]
+        blocked = c.post("/score", json={"resume": RESUME, "jd": JD})
+
+        assert all(r.status_code == 200 for r in first)
+        assert blocked.status_code == 429
+        assert int(blocked.headers["Retry-After"]) >= 1
+
+    def test_health_is_never_rate_limited(self, client, monkeypatch):
+        """It is what a platform polls to decide the container is alive. Limiting it is how
+        a service gets restarted for being busy."""
+        monkeypatch.setattr(main, "RATE_LIMIT_REQUESTS", 1)
+        monkeypatch.setattr(main, "limiter", main.SlidingWindowLimiter(1, 60))
+        c = client()
+
+        assert all(c.get("/health").status_code == 200 for _ in range(5))
+
+    def test_setting_the_limit_to_zero_disables_it_for_local_runs(self, client, monkeypatch):
+        monkeypatch.setattr(main, "RATE_LIMIT_REQUESTS", 0)
+        c = client()
+
+        responses = [c.post("/score", json={"resume": RESUME, "jd": JD}) for _ in range(6)]
+        assert all(r.status_code == 200 for r in responses)
+
+
+class TestClientIdentity:
+    """Behind Vercel, every request arrives from Vercel's servers, so keying the limiter on
+    the socket address would make one budget shared by every visitor. The web app forwards
+    the visitor's address, and the service believes it only alongside the shared secret,
+    because anyone calling the service directly could otherwise pick a fresh address per
+    request and never be limited at all."""
+
+    SECRET = "s3cret"
+
+    def _blocked_after_one(self, c, headers_first, headers_second):
+        c.post("/score", json={"resume": RESUME, "jd": JD}, headers=headers_first)
+        return c.post("/score", json={"resume": RESUME, "jd": JD}, headers=headers_second)
+
+    @pytest.fixture
+    def one_per_client(self, client, monkeypatch):
+        monkeypatch.setattr(main, "RATE_LIMIT_REQUESTS", 1)
+        monkeypatch.setattr(main, "limiter", main.SlidingWindowLimiter(1, 60))
+        monkeypatch.setattr(main, "PROXY_SECRET", self.SECRET)
+        return client()
+
+    def test_forwarded_visitors_get_separate_budgets_with_the_secret(self, one_per_client):
+        second = self._blocked_after_one(
+            one_per_client,
+            {"X-Proxy-Secret": self.SECRET, "X-Client-IP": "1.1.1.1"},
+            {"X-Proxy-Secret": self.SECRET, "X-Client-IP": "2.2.2.2"},
+        )
+        assert second.status_code == 200
+
+    def test_the_same_forwarded_visitor_is_still_limited(self, one_per_client):
+        headers = {"X-Proxy-Secret": self.SECRET, "X-Client-IP": "1.1.1.1"}
+        assert self._blocked_after_one(one_per_client, headers, headers).status_code == 429
+
+    def test_a_forwarded_address_without_the_secret_is_ignored(self, one_per_client):
+        second = self._blocked_after_one(
+            one_per_client,
+            {"X-Proxy-Secret": "wrong", "X-Client-IP": "1.1.1.1"},
+            {"X-Proxy-Secret": "wrong", "X-Client-IP": "2.2.2.2"},
+        )
+        assert second.status_code == 429
+
+    def test_forwarding_is_off_when_no_secret_is_configured(self, client, monkeypatch):
+        monkeypatch.setattr(main, "RATE_LIMIT_REQUESTS", 1)
+        monkeypatch.setattr(main, "limiter", main.SlidingWindowLimiter(1, 60))
+        monkeypatch.setattr(main, "PROXY_SECRET", "")
+        second = self._blocked_after_one(
+            client(),
+            {"X-Proxy-Secret": "", "X-Client-IP": "1.1.1.1"},
+            {"X-Proxy-Secret": "", "X-Client-IP": "2.2.2.2"},
+        )
+        assert second.status_code == 429

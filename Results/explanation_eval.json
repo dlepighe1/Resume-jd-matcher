@@ -1,0 +1,124 @@
+{
+  "_what": "Does the skill-gap coverage number carry the signal it implies, and are the thresholds that produce it defensible.",
+  "_scope_limit": "This does NOT validate individual requirement judgements. Whether a specific requirement was correctly called covered, and whether the sentence cited as evidence supports it, needs human labels that do not exist in this repository. Every number here is about the aggregate coverage measure only.",
+  "_method": "Thresholds selected on the 106-pair calibration half, reported on the untouched 106-pair final test, the same discipline the score calibrator follows. Intervals come from a cluster bootstrap over postings, the resampling unit used throughout this repository.",
+  "model": "dlepighe1/resume-jd-matcher-mpnet",
+  "resamples": 5000,
+  "seed": 42,
+  "shipped_thresholds": {
+    "thresholds": {
+      "covered": 0.65,
+      "partial": 0.55
+    },
+    "n_pairs": 106,
+    "n_postings": 50,
+    "spearman_coverage_vs_label": 0.6901,
+    "spearman_ci95": [
+      0.58,
+      0.775
+    ],
+    "auc_positive_vs_negative": 0.8478,
+    "auc_ci95": [
+      0.766,
+      0.9188
+    ],
+    "mean_coverage_by_match_type": {
+      "good": {
+        "n": 14,
+        "mean_coverage": 0.2493
+      },
+      "hard_negative": {
+        "n": 26,
+        "mean_coverage": 0.0817
+      },
+      "partial": {
+        "n": 13,
+        "mean_coverage": 0.2646
+      },
+      "strong": {
+        "n": 27,
+        "mean_coverage": 0.3347
+      },
+      "weak": {
+        "n": 26,
+        "mean_coverage": 0.0369
+      }
+    }
+  },
+  "tuned_thresholds": {
+    "thresholds": {
+      "covered": 0.65,
+      "partial": 0.55
+    },
+    "n_pairs": 106,
+    "n_postings": 50,
+    "spearman_coverage_vs_label": 0.6901,
+    "spearman_ci95": [
+      0.5796,
+      0.7754
+    ],
+    "auc_positive_vs_negative": 0.8478,
+    "auc_ci95": [
+      0.7683,
+      0.9172
+    ],
+    "mean_coverage_by_match_type": {
+      "good": {
+        "n": 14,
+        "mean_coverage": 0.2493
+      },
+      "hard_negative": {
+        "n": 26,
+        "mean_coverage": 0.0817
+      },
+      "partial": {
+        "n": 13,
+        "mean_coverage": 0.2646
+      },
+      "strong": {
+        "n": 27,
+        "mean_coverage": 0.3347
+      },
+      "weak": {
+        "n": 26,
+        "mean_coverage": 0.0369
+      }
+    }
+  },
+  "threshold_selection": {
+    "swept_on": "calibration half",
+    "grid": [
+      0.2,
+      0.25,
+      0.3,
+      0.35,
+      0.4,
+      0.45,
+      0.5,
+      0.55,
+      0.6,
+      0.65,
+      0.7,
+      0.75
+    ],
+    "best": {
+      "covered": 0.65,
+      "partial": 0.55,
+      "auc": 0.9173
+    }
+  },
+  "retuning_gain_on_final_test": {
+    "spearman_difference": 0.0,
+    "spearman_ci95": [
+      0.0,
+      0.0
+    ],
+    "auc_difference": 0.0,
+    "auc_ci95": [
+      0.0,
+      0.0
+    ],
+    "significant": false,
+    "_reading": "Positive means tuned thresholds rank better than the shipped ones on data neither of them was chosen on. Both metrics must clear zero, because the sweep optimised AUC and grading it only on Spearman would be generous. An interval straddling zero means the hand-picked constants cost nothing measurable and can stay."
+  }
+}

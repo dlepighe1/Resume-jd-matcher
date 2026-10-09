@@ -161,7 +161,7 @@ def main():
         preds["claude_raw"] = [claude_test.get(i) for i in test_ids]
         if claude_cal:
             cal_ids = [int(i) for i in cal_df["id"] if int(i) in claude_cal]
-            cal_lookup = dict(zip(cal_df["id"].astype(int), cal_df["score"].astype(float)))
+            cal_lookup = dict(zip(cal_df["id"].astype(int), cal_df["score"].astype(float), strict=False))
             iso = IsotonicRegression(out_of_bounds="clip").fit(
                 [claude_cal[i] for i in cal_ids], [cal_lookup[i] for i in cal_ids])
             preds["claude_calibrated"] = [
@@ -253,7 +253,7 @@ def main():
         if not vals or all(v is None for v in vals):
             engine["available"] = False
             continue
-        paired = [(t, v) for t, v in zip(truth, vals) if v is not None]
+        paired = [(t, v) for t, v in zip(truth, vals, strict=False) if v is not None]
         t, v = [p[0] for p in paired], [p[1] for p in paired]
         sp, mae = spearman_mae(t, v)
         engine["available"] = True

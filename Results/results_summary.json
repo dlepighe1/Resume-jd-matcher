@@ -516,7 +516,13 @@
           0.037
         ],
         "p_value": 0.8922,
-        "significant": false
+        "significant": false,
+        "p_holm": 0.8922,
+        "significant_holm": false,
+        "family": "primary",
+        "verdict": "inconclusive",
+        "min_detectable_effect_80pct_power": 0.0452,
+        "postings_to_resolve_at_margin": 338
       },
       "combined_vs_cosent_mae": {
         "difference": 0.0061,
@@ -525,7 +531,13 @@
           0.0164
         ],
         "p_value": 0.2702,
-        "significant": false
+        "significant": false,
+        "p_holm": 0.5404,
+        "significant_holm": false,
+        "family": "primary",
+        "verdict": "inconclusive",
+        "min_detectable_effect_80pct_power": 0.0152,
+        "postings_to_resolve_at_margin": 164
       },
       "combined_vs_cosine_spearman": {
         "difference": 0.0458,
@@ -534,7 +546,13 @@
           0.0878
         ],
         "p_value": 0.0198,
-        "significant": true
+        "significant": true,
+        "p_holm": 0.0792,
+        "significant_holm": false,
+        "family": "secondary",
+        "verdict": "inconclusive",
+        "min_detectable_effect_80pct_power": 0.0569,
+        "postings_to_resolve_at_margin": 535
       },
       "combined_vs_cosine_mae": {
         "difference": -0.0158,
@@ -543,7 +561,12 @@
           -0.0043
         ],
         "p_value": 0.0066,
-        "significant": true
+        "significant": true,
+        "p_holm": 0.033,
+        "significant_holm": true,
+        "family": "secondary",
+        "verdict": "different",
+        "min_detectable_effect_80pct_power": 0.0168
       },
       "combined_vs_cosent_3seed_ensemble_spearman": {
         "difference": -0.0257,
@@ -552,10 +575,22 @@
           -0.0044
         ],
         "p_value": 0.021,
-        "significant": true
+        "significant": true,
+        "p_holm": 0.0792,
+        "significant_holm": false,
+        "family": "secondary",
+        "verdict": "inconclusive",
+        "min_detectable_effect_80pct_power": 0.0312,
+        "postings_to_resolve_at_margin": 161
+      },
+      "_multiplicity": "Ten comparisons were computed. Four are algebraic restatements of another row (Spearman is invariant to the monotone calibrator, so an arm's raw and Platt Spearman are one number) and take no share of the correction. The pre-registered H1 pair is corrected on its own; the CosineSimilarity and ensemble comparisons are corrected as a five-member exploratory family. Only combined-vs-cosine on MAE survives, at 0.0330.",
+      "_equivalence_margins": {
+        "spearman": 0.0174,
+        "mae": 0.0084,
+        "_derivation": "|notebook 07 `combined` arm - notebook 05 published run| on the 3-seed aggregate, Platt. Both are the identical recipe, so this is the spread of re-running an unchanged design rather than a difference between designs."
       }
     },
-    "h1_verdict": "H1 SUPPORTED: CoSENT alone is indistinguishable from the combined loss after calibration, so the CosineSimilarity term can be dropped.",
+    "h1_verdict": "H1 SUPPORTED WEAKLY: CoSENT alone is not separable from the combined loss, but equivalence is not established on mae, spearman, so this is a failure to detect a difference rather than a demonstrated tie.",
     "_finding": "The combined loss does not earn its place. After Platt calibration CoSENT alone is indistinguishable from the combined objective on both metrics, so the CosineSimilarity term can be dropped. The result is asymmetric and that is what makes it informative: CoSENT is load-bearing, since replacing it costs a significant 0.0458 Spearman, while CosineSimilarity is not, since dropping it costs nothing measurable.",
     "_preregistered_predictions_all_confirmed": "Before Platt, cosent ranks best (0.8477) and calibrates worst (MAE 0.2199) while cosine calibrates best (0.1486) and ranks worst (0.8045), exactly as predicted from CoSENT being rank-based and scale-free. After Platt the two converge to 0.1078 and 0.1261. The sharper prediction also held: the magnitude information the CosineSimilarity term supplies is information a two-parameter sigmoid already recovers for free.",
     "_only_supported_upgrade": "The 3-seed CoSENT ensemble is the single arm that separates from the shipped model, at +0.0257 Spearman, p 0.021. It averages raw cosines across all three runs, so there is no selection step and nothing is cherry picked. It costs 3x inference memory and latency, which is not free on a sleeping CPU service, so it is recorded here as evidenced rather than adopted.",
@@ -580,7 +615,10 @@
         0.292
       ],
       "p": 0.0,
-      "significant": true
+      "significant": true,
+      "p_holm": 0.0,
+      "significant_holm": true,
+      "min_detectable_effect_80pct_power": 0.131
     },
     "production_vs_claude_opus_4_5": {
       "spearman_diff": 0.1047,
@@ -590,7 +628,10 @@
       ],
       "p": 0.012,
       "significant": true,
-      "_note": "The headline comparison. A 109M-parameter bi-encoder fine-tuned on 815 pairs outranks a frontier model on this task by more than sampling noise, though the lower bound of +0.02 shows the margin is not comfortable."
+      "_note": "The headline comparison. A 109M-parameter bi-encoder fine-tuned on 815 pairs outranks a frontier model on this task by more than sampling noise, and the gap survives correction for the six comparisons in its family. The lower bound of +0.02 shows the margin is not comfortable.",
+      "p_holm": 0.012,
+      "significant_holm": true,
+      "min_detectable_effect_80pct_power": 0.1362
     },
     "production_vs_tfidf": {
       "spearman_diff": 0.2508,
@@ -599,7 +640,10 @@
         0.404
       ],
       "p": 0.0,
-      "significant": true
+      "significant": true,
+      "p_holm": 0.0,
+      "significant_holm": true,
+      "min_detectable_effect_80pct_power": 0.2002
     },
     "production_vs_jaccard": {
       "spearman_diff": 0.2572,
@@ -608,14 +652,18 @@
         0.421
       ],
       "p": 0.0,
-      "significant": true
+      "significant": true,
+      "p_holm": 0.0,
+      "significant_holm": true,
+      "min_detectable_effect_80pct_power": 0.2152
     },
     "grouped_calibration_check": {
       "reported_mae": 0.127,
       "leave_one_posting_out_mae": 0.1276,
       "difference": 0.0006,
       "_what_it_answers": "Whether the calibration split sharing postings with the final test inflated MAE. It did not, by 0.0006."
-    }
+    },
+    "_multiplicity": "All six engine comparisons form one pre-registered family and every one of them survives Holm-Bonferroni correction. The Claude comparison is the family's largest p-value, so its adjusted value equals its raw one at 0.0120."
   },
   "charts": {
     "Results/model_audit.png": "Notebook 06: baseline ladder, name-substitution spread, reliability diagram, per-match-type error",

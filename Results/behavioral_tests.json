@@ -1,0 +1,68 @@
+{
+  "_what": "Interventions on the resume, checking the score responds to requirement coverage rather than merely correlating with a label.",
+  "_method": "Each perturbation changes exactly one thing about a held-out resume and rescores it against the same posting, so the comparison is paired. Raw cosine is reported rather than calibrated, because Platt is monotone and cannot change the sign of any effect here. Intervals from a cluster bootstrap over postings.",
+  "_expectations_were_written_first": "The four directional predictions are stated in this script's docstring and were fixed before it was run. `keyword_stuff` is the sharpest: the product warns users that adding unevidenced terms reproduces the pattern hard negatives were built from, and a rise here would contradict a claim the product makes to users.",
+  "_threshold": "A move counts as meaningful at 0.012 raw cosine, roughly a tenth of the model's reported mean absolute error.",
+  "model": "dlepighe1/resume-jd-matcher-mpnet",
+  "resamples": 3000,
+  "seed": 42,
+  "tests": [
+    {
+      "test": "drop_evidence",
+      "expectation": "decrease",
+      "n_pairs": 106,
+      "mean_delta": -0.0448,
+      "ci95": [
+        -0.0561,
+        -0.0337
+      ],
+      "median_delta": -0.0273,
+      "pairs_moving_wrong_way": 13,
+      "passed": true,
+      "_reading": "the score falls when its own cited evidence is removed"
+    },
+    {
+      "test": "keyword_stuff",
+      "expectation": "no_increase",
+      "n_pairs": 52,
+      "mean_delta": 0.0847,
+      "ci95": [
+        0.0723,
+        0.0964
+      ],
+      "median_delta": 0.0876,
+      "pairs_moving_wrong_way": 52,
+      "passed": false,
+      "_reading": "the score does not rise materially"
+    },
+    {
+      "test": "shuffle_sections",
+      "expectation": "invariant",
+      "n_pairs": 106,
+      "mean_delta": -0.0406,
+      "ci95": [
+        -0.0517,
+        -0.0304
+      ],
+      "median_delta": -0.038,
+      "pairs_moving_wrong_way": 22,
+      "passed": false,
+      "_reading": "the score is close to unchanged"
+    },
+    {
+      "test": "pad_irrelevant",
+      "expectation": "no_increase",
+      "n_pairs": 106,
+      "mean_delta": 0.0202,
+      "ci95": [
+        0.0137,
+        0.0267
+      ],
+      "median_delta": 0.0137,
+      "pairs_moving_wrong_way": 80,
+      "passed": false,
+      "_reading": "the score does not rise materially"
+    }
+  ],
+  "all_passed": false
+}

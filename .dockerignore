@@ -1,0 +1,18 @@
+# Keep the build context to what the Dockerfile copies. web/node_modules alone is
+# hundreds of MB, and Data/ and Notebooks/ are research artifacts the service never reads.
+web/
+Data/
+Notebooks/
+Results/
+docs/
+portfolio/
+scripts/
+tests/
+.git/
+.github/
+**/__pycache__/
+**/.pytest_cache/
+.venv/
+venv/
+.env
+.env*
