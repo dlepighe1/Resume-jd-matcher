@@ -1,7 +1,8 @@
 # Demo page
 
 A single Next.js page for inspecting the resume/job-description matcher: live scoring, the
-held-out benchmark, and the evidence behind both.
+held-out benchmark, and the evidence behind both. Live at
+[resume-ai-virid-six.vercel.app](https://resume-ai-virid-six.vercel.app).
 
 This directory contains no product features. Authentication, persistence, and the multi-page
 application were removed when this repository became research-only. The SaaS built on top of

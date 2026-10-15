@@ -231,12 +231,6 @@ resultImages:
       detectable and about a twentieth of the model's own mean absolute error, and 3 of 106
       pairs cross a verdict band on the name alone. It tests names only, and says nothing
       about school, address or employment gaps.
-  - title: "The held-out benchmark, pair by pair"
-    image: demo-benchmark.jpg
-    caption: >-
-      A demo page for reading the evidence rather than the summary. Filter the 106 held-out
-      pairs by match type or industry, compare every engine on the same pair, and read the
-      resume and posting behind each score.
 
 # === 6. Challenges and insights ===
 # `challenge` is one line; `solution` is one to three sentences.
@@ -443,16 +437,12 @@ keyInsightsShared:
 githubUrl: https://github.com/dlepighe1/Resume-jd-matcher
 reportUrl: https://github.com/dlepighe1/Resume-jd-matcher/blob/main/README.md
 
-# The one field that is blank because the thing it points at does not exist yet.
-# `python scripts/build_demo_data.py && cd web && npm run build` produces the page; it has
-# never been deployed, and SCORING_SERVICE_URL still points at localhost. Setting this to a
-# real URL also unlocks the §5 Live Demo Showcase and the blue "Live Demo" action button.
-demoUrl: ""
+# The demo page on Vercel, scoring through the Railway service. Setting this unlocks the
+# §5 Live Demo Showcase and the blue "Live Demo" action button.
+demoUrl: https://resume-ai-virid-six.vercel.app
 
 # Screenshots of the running app. One exists today: the benchmark explorer, captured from
-# the demo page running locally. It is also carried in resultImages, so that the figure is
-# not lost while demoUrl is empty and this section does not render. If the demo goes live and
-# both sections appear, drop the last resultImages entry rather than this one.
+# the demo page.
 gallery:
   - demo-benchmark.jpg
 

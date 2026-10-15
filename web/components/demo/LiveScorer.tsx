@@ -122,8 +122,8 @@ export function LiveScorer({ serviceConfigured }: { serviceConfigured: boolean }
       </div>
 
       <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-        Nothing you paste is stored. This repository has no database. Text is scored in memory and
-        discarded when the request completes.
+        Nothing you paste is stored. This repository has no database. Text is sent to the scoring
+        service on Railway, scored in memory, and discarded when the request completes.
       </p>
 
       {state === "loading" && (

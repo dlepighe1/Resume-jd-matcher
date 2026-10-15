@@ -3,6 +3,8 @@
 [![tests](https://github.com/dlepighe1/Resume-jd-matcher/actions/workflows/tests.yml/badge.svg)](https://github.com/dlepighe1/Resume-jd-matcher/actions/workflows/tests.yml)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
+**Live demo: [resume-ai-virid-six.vercel.app](https://resume-ai-virid-six.vercel.app)**
+
 A fine-tuned sentence-transformer that scores how well a resume fits a job description on a
 calibrated 0 to 1 scale, explains which requirements are covered, and generalizes to job
 postings it has never seen.
@@ -14,7 +16,8 @@ at 0.816, Claude Opus 4.5 at 0.712, base MPNet at 0.625, TF-IDF at
 *Every engine scored on the identical 106 held-out pairs, with 95% bootstrap intervals. The
 demo page lets you filter to the cases you care about and read the resume and posting behind
 any point, including the ones the model gets wrong.
-[Run it locally](#running-the-demo-page).*
+[Try it live](https://resume-ai-virid-six.vercel.app) or
+[run it locally](#running-the-demo-page).*
 
 **In one minute**
 
@@ -599,7 +602,9 @@ still works, which is the part with evidence behind it.
 
 ### Deploying it
 
-Two pieces, and the page is useful even if only the first ships. Everything the benchmark
+The demo is live at [resume-ai-virid-six.vercel.app](https://resume-ai-virid-six.vercel.app): the page on Vercel, the
+scoring service on Railway. To deploy your own copy, there are two pieces, and the page is
+useful even if only the first ships. Everything the benchmark
 section renders comes from `web/public/benchmark.json`, so the deployed page shows the full
 held-out evidence with no scoring service behind it at all. Live scoring degrades to a
 message rather than an error.
@@ -616,8 +621,9 @@ so a container start loads weights from disk instead of downloading them. Genera
 domain for the service, then set `SCORING_SERVICE_URL` on Vercel to it and redeploy. The full
 walkthrough is in [`service/README.md`](service/README.md#deploy-to-railway).
 
-If Railway's serverless sleeping is enabled, the first request after idle waits while the
-420 MB model loads into memory. That cold start is the main argument for the efficiency study
+The live service sleeps when idle, so the first request after a quiet period waits while the
+420 MB model loads into memory. On the live deployment that first request took about 20
+seconds, and later ones about 7. That cold start is the main argument for the efficiency study
 in [`docs/EFFICIENCY_STUDY.md`](docs/EFFICIENCY_STUDY.md).
 
 Before making the URL public, check three things. `RATE_LIMIT_REQUESTS` and
@@ -626,9 +632,6 @@ web app makes arrives from Vercel, so visitors share one budget unless `PROXY_SE
 service and `SCORING_SERVICE_SECRET` on Vercel hold the same value. Adding `ANTHROPIC_API_KEY`
 puts a paid engine behind a public endpoint. The service also caps input at 15,000 characters
 independently of the web layer, because it is reachable without going through it.
-
-Once deployed, set `demoUrl` in [`portfolio/resume-jd-matcher.md`](portfolio/resume-jd-matcher.md)
-and add the link at the top of this file.
 
 ## Running the tests
 
@@ -908,8 +911,8 @@ Ordered by how much they constrain the conclusions.
 - E5 outperformed MPNet in one run of notebook 02 and was not carried forward. It deserves a
   multi-seed re-test.
 - ONNX or quantized export for cheaper CPU serving.
-- **The demo page is not deployed.** Everything needed to run it is here and nothing is
-  clickable, which for a study meant to be read is a real gap.
+- **The live demo has a cold start.** The scoring service runs on one CPU container that
+  sleeps when idle, so the first score after a quiet period takes about 20 seconds.
 
 ---
 

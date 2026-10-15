@@ -44,6 +44,8 @@ isn't.
 
 ## Deploy to Railway
 
+The live demo at [resume-ai-virid-six.vercel.app](https://resume-ai-virid-six.vercel.app) calls this service on Railway.
+
 The root `Dockerfile` builds this service, and the root `railway.toml` configures the
 deploy: build from the Dockerfile, gate traffic on `/health`, and rebuild only when
 `service/`, `src/`, `app/`, the calibrators, or the Dockerfile change.
