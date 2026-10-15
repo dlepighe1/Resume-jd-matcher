@@ -1,11 +1,6 @@
-import { env } from "@/lib/env";
 import { AnalyzeError } from "@/lib/errors";
-import { serviceHeaders } from "@/lib/providers/service";
+import { postToService } from "@/lib/providers/service";
 import { PROVIDER_META, type AnalysisResult, type RequirementStatus } from "@/lib/types";
-
-/** A host that sleeps when idle (Railway serverless, a free HuggingFace Space) has to
- *  wake the container and load ~420 MB of weights on the first request. */
-const TIMEOUT_MS = 120_000;
 
 /**
  * The model's measured mean absolute error on 106 held-out pairs from 53 job postings it
@@ -43,27 +38,16 @@ export async function analyzeWithFineTuned(
   resumeText: string,
   clientIp?: string,
 ): Promise<AnalysisResult> {
-  const baseUrl = env.scoringService.url.replace(/\/$/, "");
   const startedAt = Date.now();
 
-  let response: Response;
-  try {
-    response = await fetch(`${baseUrl}/score`, {
-      method: "POST",
-      headers: serviceHeaders(clientIp),
-      body: JSON.stringify({ resume: resumeText, jd: jobDescription }),
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
-  } catch (error) {
-    const timedOut = error instanceof Error && error.name === "TimeoutError";
-    throw new AnalyzeError(
-      "MODEL_SERVICE_UNREACHABLE",
-      timedOut
-        ? "The scoring service did not respond in time. If it has been idle it may still be waking up, try again in a moment."
-        : `Could not reach the scoring service at ${baseUrl}. Is it running?`,
-      503,
-    );
-  }
+  // A host that sleeps when idle has to wake the container and load ~420 MB of weights
+  // on the first request; postToService retries through that.
+  const response = await postToService(
+    "/score",
+    { resume: resumeText, jd: jobDescription },
+    clientIp,
+    "scoring service",
+  );
 
   if (!response.ok) {
     const body = await response.text().catch(() => "");

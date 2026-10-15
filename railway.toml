@@ -15,8 +15,9 @@ watchPatterns = [
 ]
 
 [deploy]
-# Railway switches traffic to a new deploy only once this returns 200. The model loads
-# before uvicorn starts serving, so a 200 here means the model is in memory.
+# Railway switches traffic to a new deploy only once this returns 200. The server binds
+# its port at once and loads the model in the background, and /health answers 503 until
+# the load finishes, so a 200 here still means the model is in memory.
 healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"

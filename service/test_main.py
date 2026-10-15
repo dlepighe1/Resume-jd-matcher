@@ -470,3 +470,70 @@ class TestImageDependencies:
             if self.DIST.get(name, name).lower() not in declared
         }
         assert not missing, f"imported by the service but not in service/requirements.txt: {missing}"
+
+
+class TestStartup:
+    """The server binds its port first and loads the models in the background.
+
+    Loading inside lifespan held the port closed for the length of the load, and a host
+    that wakes a sleeping container answered 502 for every request in that window."""
+
+    def test_lifespan_returns_before_the_model_has_loaded(self, monkeypatch):
+        import threading
+
+        release = threading.Event()
+
+        def slow_load():
+            release.wait(5)
+            raise OSError("never mind")
+
+        monkeypatch.setattr(main, "load_scorer", slow_load)
+        monkeypatch.setattr(main, "_load_base_model", lambda: None)
+        # lifespan replaces these module globals; registering them restores them afterwards.
+        monkeypatch.setattr(main, "_scorer_ready", None)
+        monkeypatch.setattr(main, "_base_ready", None)
+
+        # Entering the context runs lifespan. If the load were on this path, startup
+        # would block here until slow_load gave up.
+        with TestClient(app) as c:
+            assert c.get("/health").status_code == 503
+            release.set()
+
+    def test_a_request_during_the_load_waits_for_the_model(self, monkeypatch, scorer_factory):
+        import threading
+
+        ready = threading.Event()
+        monkeypatch.setattr(main, "_scorer", None)
+        monkeypatch.setattr(main, "_scorer_ready", ready)
+
+        def finish_loading():
+            main._scorer = scorer_factory()
+            ready.set()
+
+        threading.Timer(0.2, finish_loading).start()
+        response = TestClient(app).post("/score", json={"resume": RESUME, "jd": JD})
+
+        assert response.status_code == 200
+
+    def test_a_failed_load_still_releases_waiting_requests(self, monkeypatch):
+        import threading
+
+        def broken():
+            raise OSError("hub unreachable and no fallback")
+
+        monkeypatch.setattr(main, "load_scorer", broken)
+        monkeypatch.setattr(main, "_load_base_model", broken)
+        scorer_ready, base_ready = threading.Event(), threading.Event()
+
+        main._load_models(scorer_ready, base_ready)
+
+        assert scorer_ready.is_set() and base_ready.is_set()
+
+    def test_still_loading_is_a_retryable_503(self, monkeypatch):
+        monkeypatch.setattr(main, "_scorer", None)
+        monkeypatch.setattr(main, "_scorer_ready", None)
+
+        response = TestClient(app).post("/score", json={"resume": RESUME, "jd": JD})
+
+        assert response.status_code == 503
+        assert response.headers["Retry-After"]

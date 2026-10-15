@@ -1,6 +1,7 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { analyzeWithFineTuned } from "@/lib/providers/finetuned";
+import { serviceRetry } from "@/lib/providers/service";
 
 const JD = "a ".repeat(60);
 const RESUME = "b ".repeat(60);
@@ -110,6 +111,16 @@ describe("mapping the scoring service response", () => {
 });
 
 describe("service failures", () => {
+  // No retries here: retrying is covered in service.test.ts, and these cases are about
+  // how a final failure is reported.
+  const defaultBudget = serviceRetry.budgetMs;
+  beforeEach(() => {
+    serviceRetry.budgetMs = 0;
+  });
+  afterEach(() => {
+    serviceRetry.budgetMs = defaultBudget;
+  });
+
   it("reports an unreachable service distinctly, so the UI can say 'still waking up'", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("fetch failed")));
 

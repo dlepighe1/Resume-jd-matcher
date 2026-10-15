@@ -19,6 +19,7 @@ import logging
 import os
 import pickle
 import sys
+import threading
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -224,22 +225,85 @@ def load_scorer() -> Scorer:
 
 
 _scorer: Scorer | None = None
+_base_model = None
+
+# How long a request waits for the models before giving up with a 503. The web app retries
+# on 503, so this only needs to cover most of a cold load, not all of it.
+LOAD_WAIT_SECONDS = float(os.getenv("LOAD_WAIT_SECONDS", "60"))
+
+# Set by the loader thread. A request that arrives mid-load waits on these rather than
+# failing. None means no load was started (the test suite), and nothing waits.
+_scorer_ready: threading.Event | None = None
+_base_ready: threading.Event | None = None
+_base_lock = threading.Lock()
+
+
+def _load_models(scorer_ready: threading.Event, base_ready: threading.Event) -> None:
+    """Load the fine-tuned model, then base MPNet, off the server's startup path."""
+    global _scorer, _base_model
+    try:
+        _scorer = load_scorer()
+    except Exception:
+        log.exception("Could not load any model; /score will return 503")
+    finally:
+        scorer_ready.set()
+
+    try:
+        _load_base_model()
+    except Exception:
+        log.exception("Could not preload base %s; /baseline will retry on first call",
+                      BASE_MODEL)
+    finally:
+        base_ready.set()
+
+
+def _load_base_model():
+    """Base MPNet, loaded at most once even when two requests race for it."""
+    global _base_model
+    with _base_lock:
+        if _base_model is None:
+            from sentence_transformers import SentenceTransformer
+
+            log.info("Loading base %s for the baseline endpoint", BASE_MODEL)
+            _base_model = SentenceTransformer(BASE_MODEL)
+    return _base_model
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    global _scorer
-    _scorer = load_scorer()
+    """Start serving at once and load the models in the background.
+
+    Loading inside lifespan, before uvicorn binds its port, is what broke the deployed
+    demo: when Railway wakes a sleeping container it forwards the waiting request as soon
+    as the container starts, finds nothing listening for the 20+ seconds the weights take,
+    and answers 502 for every endpoint. Bound first, the request is accepted and simply
+    waits for the model below.
+    """
+    global _scorer, _base_model, _scorer_ready, _base_ready
+    _scorer_ready, _base_ready = threading.Event(), threading.Event()
+    threading.Thread(target=_load_models, args=(_scorer_ready, _base_ready),
+                     name="model-loader", daemon=True).start()
     yield
-    _scorer = None
+    _scorer = _base_model = None
+
+
+def _wait_for(event: threading.Event | None) -> None:
+    if event is not None:
+        event.wait(LOAD_WAIT_SECONDS)
 
 
 def get_scorer() -> Scorer:
     """FastAPI dependency. Tests override this with a stub encoder, which is what keeps
     the service's test suite offline and fast."""
     if _scorer is None:
-        raise HTTPException(status_code=503, detail="Model is still loading.")
+        raise HTTPException(status_code=503, detail="Model is still loading.",
+                            headers={"Retry-After": "5"})
     return _scorer
+
+
+def wait_for_scorer() -> None:
+    """Hold a scoring request until the model has loaded, instead of failing it."""
+    _wait_for(_scorer_ready)
 
 
 app = FastAPI(title="ResumeAI scoring service", lifespan=lifespan)
@@ -346,16 +410,11 @@ def _validate(request: ScoreRequest) -> None:
 
 
 @app.post("/score", response_model=ScoreResponse)
-def score(request: ScoreRequest, scorer: Scorer = Depends(get_scorer),
+def score(request: ScoreRequest, _loaded: None = Depends(wait_for_scorer),
+          scorer: Scorer = Depends(get_scorer),
           _: None = Depends(enforce_rate_limit)) -> ScoreResponse:
     _validate(request)
     return scorer.score(request.resume, request.jd)
-
-
-# Loaded on first use, not at startup: most requests never touch it, and holding a second
-# 420 MB model resident would double the container's memory and cold-start cost for a
-# comparison feature. The demo surfaces the first-call delay rather than hiding it.
-_base_model = None
 
 
 @app.post("/baseline", response_model=BaselineResponse)
@@ -366,22 +425,21 @@ def baseline(request: ScoreRequest,
     This exists so the demo can show what fine-tuning bought on the visitor's own text
     rather than only on the benchmark. Returns raw cosine only, see BaselineResponse.
     """
-    global _base_model
     _validate(request)
 
-    if _base_model is None:
-        from sentence_transformers import SentenceTransformer
-
-        log.info("Loading base %s for the baseline endpoint (first call)", BASE_MODEL)
-        _base_model = SentenceTransformer(BASE_MODEL)
+    # Preloaded in the background after the fine-tuned model, since the demo page calls
+    # this on every score. Loading it lazily put a second model load on the first visitor
+    # after every wake. If the preload failed, this loads it on the spot.
+    _wait_for(_base_ready)
+    base_model = _load_base_model()
 
     # Same preprocessing as the fine-tuned path. Comparing a preprocessed input against a
     # raw one would measure preprocessing, not fine-tuning.
     resume_clean = preprocess_resume(request.resume, MAX_WORDS)
     jd_clean = smart_truncate_jd(request.jd, MAX_WORDS)
 
-    r_emb = _base_model.encode([resume_clean], show_progress_bar=False, convert_to_numpy=True)
-    j_emb = _base_model.encode([jd_clean], show_progress_bar=False, convert_to_numpy=True)
+    r_emb = base_model.encode([resume_clean], show_progress_bar=False, convert_to_numpy=True)
+    j_emb = base_model.encode([jd_clean], show_progress_bar=False, convert_to_numpy=True)
 
     return BaselineResponse(
         raw_cosine=round(float(cosine_similarity(r_emb, j_emb)[0][0]), 4),
