@@ -418,3 +418,55 @@ class TestClientIdentity:
             {"X-Proxy-Secret": "", "X-Client-IP": "2.2.2.2"},
         )
         assert second.status_code == 429
+
+
+class TestRoot:
+    def test_the_root_url_redirects_to_the_interactive_docs(self, client):
+        """A HuggingFace Space's App tab loads `/`. Without a route there, the public face of
+        the deployment is a bare {"detail": "Not Found"}."""
+        response = client().get("/", follow_redirects=False)
+
+        assert response.status_code in (302, 307)
+        assert response.headers["location"] == "/docs"
+
+
+class TestImageDependencies:
+    """The image installs only service/requirements.txt, but the dev environment also has
+    the root requirements, so a third-party import the service reaches without declaring
+    passes every other test here and crashes the container at startup. src/train.py
+    importing pandas, reached through the calibrator unpickling, did exactly that."""
+
+    # import name -> distribution name, where they differ
+    DIST = {"sklearn": "scikit-learn", "sentence_transformers": "sentence-transformers",
+            "truststore": "truststore"}
+    MODULES = ["service/main.py", "src/train.py", "src/augment.py", "src/text_utils.py",
+               "app/explain.py"]
+
+    def _top_level_imports(self, path: Path) -> set[str]:
+        import ast
+
+        names = set()
+        for node in ast.parse(path.read_text(encoding="utf-8")).body:
+            if isinstance(node, ast.Import):
+                names.update(alias.name.split(".")[0] for alias in node.names)
+            elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+                names.add(node.module.split(".")[0])
+        return names
+
+    def test_every_third_party_import_is_declared(self):
+        declared = {
+            re.split(r"[=<>\[ ]", line.strip())[0].lower()
+            for line in (REPO_ROOT / "service" / "requirements.txt").read_text().splitlines()
+            if line.strip() and not line.startswith("#")
+        }
+        local = {"src", "app", "service", "__main__"}
+        imports = set().union(*(self._top_level_imports(REPO_ROOT / m) for m in self.MODULES))
+        third_party = {
+            name for name in imports - local if name not in sys.stdlib_module_names
+        }
+        # truststore is guarded by try/except ImportError in main.py, so it may be absent.
+        missing = {
+            name for name in third_party - {"truststore"}
+            if self.DIST.get(name, name).lower() not in declared
+        }
+        assert not missing, f"imported by the service but not in service/requirements.txt: {missing}"

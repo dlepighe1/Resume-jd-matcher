@@ -37,6 +37,7 @@ except ImportError:
     pass
 
 from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -314,6 +315,13 @@ def enforce_rate_limit(request: Request) -> None:
                    f"{int(RATE_LIMIT_WINDOW_SECONDS)}s.",
             headers={"Retry-After": str(limiter.retry_after(client, now))},
         )
+
+
+@app.get("/", include_in_schema=False)
+def root() -> RedirectResponse:
+    """The Space's App tab, and anyone opening the bare URL, land on the interactive docs
+    rather than a 404."""
+    return RedirectResponse("/docs")
 
 
 @app.get("/health", response_model=HealthResponse)
